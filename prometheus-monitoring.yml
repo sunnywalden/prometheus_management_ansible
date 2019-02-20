@@ -1,0 +1,57 @@
+# example
+# # prometheus-playbook  prometheus-monitoring.yaml
+- name: install influxdb
+  hosts: prometheus-cluster
+  remote_user: root
+  gather_facts: true
+  roles:
+    - influx
+
+- name: install alert_manager
+  hosts: alertmanager
+  remote_user: root
+  gather_facts: true
+  roles:
+    - alertmanager
+
+- name: install push_gateway
+  hosts: pushgateway
+  remote_user: root
+  gather_facts: true
+  roles:
+    - pushgateway
+
+- name: install dingtalk
+  hosts: dingtalk
+  remote_user: root
+  gather_facts: true
+  roles:
+    - dingtalk
+
+- name: install blackbox_exporter
+  hosts: blackbox
+  remote_user: root
+  gather_facts: true
+  roles:
+    - blackbox
+
+- name: install prometheus
+  hosts: prometheus-cluster
+  remote_user: root
+  gather_facts: true
+  roles:
+    - prometheus
+
+- name: install node_exporter
+  hosts: nodeexporter
+  remote_user: root
+  gather_facts: true
+  roles:
+    - nodeexporter
+
+- name: install grafana
+  hosts: grafana
+  remote_user: root
+  gather_facts: true
+  roles:
+    - grafana

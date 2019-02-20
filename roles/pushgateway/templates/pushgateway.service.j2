@@ -1,0 +1,29 @@
+[Unit]
+Description=Prometheus Pushgateway
+After=network.target
+
+[Service]
+Type=simple
+User={{ prometheus_user }}
+Group={{ prometheus_group }}
+
+ExecStart={{ pushgateway_install_path }}/pushgateway \
+--web.listen-address=:{{ pushgateway_port }} \
+--web.telemetry-path={{ web_telemetry_path }} \
+--persistence.interval={{ persistence_interval }} \
+--log.level={{ log_level }} \
+--log.format={{ log_format }} {% if web_route_prefix %} --web.route-prefix={{ web_route_prefix }} {% endif %} {% if web_route_prefix %} --persistence.file={{ persistence_file }} {% endif %}
+
+ExecReload=/bin/kill -HUP $MAINPID
+SyslogIdentifier=pushgateway
+Restart=always
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

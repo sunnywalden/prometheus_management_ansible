@@ -1,0 +1,17 @@
+---
+
+- hosts: fix*
+  remote_user: root
+  tasks:
+  - name: check if node_exporter service is exists
+    shell: netstat -tunlp | grep node_exporter|grep -v grep|wc -l
+    register: result1
+
+  - name: check if node_exporter service is exists
+    shell: netstat -tunlp | grep 9100|grep -v grep|wc -l
+    register: result
+    when: result1.stdout == "1"
+ 
+  - name: check if node_exporter service is exists
+    debug: msg="agent is running, but not bind on 9100 port.{{ result }}"
+    when: result.stdout == "0" and result1.stdout == "1"

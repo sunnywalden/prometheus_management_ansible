@@ -1,0 +1,151 @@
+---
+# file: tasks/install-snmp.yml
+#
+# Install snmp_exporter.
+#
+#
+
+- name: create install directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    state: directory
+    mode: 0755
+  with_items:
+    - "{{ pid_path }}/snmp"
+    - "{{ log_path }}/snmp"
+    - "{{ snmp_install_path }}"
+    - "{{ snmp_config_path }}"
+  tags: ['snmp', 'snmp-install', 'service-update']
+
+- block:
+
+    - name: set internal variables for convenience
+      set_fact:
+        snmp_subdir: "{{ snmp_install_path }}/snmp-{{ snmp_version }}.{{ platform_suffix[ansible_architecture] }}"
+      tags: ['snmp', 'snmp-install']
+
+
+    - name: set download url
+      set_fact:
+        snmp_tarball_url: "https://github.com/prometheus/snmp_exporter/releases/download/v{{ snmp_version }}/snmp_exporter-{{ snmp_version }}.{{ platform_suffix[ansible_architecture] }}.tar.gz"
+      tags: ['snmp', 'snmp-install']
+
+    - name: download and untar snmp tarball
+      unarchive:
+        src: "{{ snmp_tarball_url }}"
+        dest: "{{ snmp_install_path }}"
+        copy: no
+      register: result
+      until: result.failed == false
+      retries: 5
+      delay: 10
+      tags: ['snmp', 'snmp-install']
+
+    - name: copy files
+      copy:
+        src: "{{ snmp_install_path }}/snmp_exporter-{{ snmp_version }}.{{ platform_suffix[ansible_architecture] }}/{{ item }}"
+        remote_src: yes
+        dest: "{{ snmp_install_path }}"
+      with_items:
+        - snmp_exporter
+      tags: ['snmp', 'snmp-install']
+
+    - name: remove directory of tar
+      file:
+        path: "{{ snmp_install_path }}/snmp-{{ snmp_version }}.{{ platform_suffix[ansible_architecture] }}"
+        state: absent
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: "755"
+      tags: ['snmp', 'snmp-install']
+
+#- name: set permissions, owner and group
+#  file:
+#    path: "{{ snmp_install_path }}"
+#    state: directory
+#    owner: "{{ prometheus_user }}"
+#    group: "{{ prometheus_group }}"
+#    mode: "755"
+#    recurse: yes
+#  tags: ['snmp', 'snmp-install']
+
+- name: mkdir for config and data
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "u=rwx,g=rwx,o=rx"
+    recurse: yes
+  with_items:
+    - "{{ snmp_install_path }}"
+  tags: ['snmp', 'snmp-install']
+
+- name: copy snmp main config file from role, if necessary
+  template:
+    src: "snmp.yml.j2"
+    dest: "{{ snmp_config_path }}/snmp.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: 0755
+  tags: ['snmp', 'snmp-install', 'conf-update']
+
+- name: copy service script to server
+  template: src="snmp_exporter.service.j2"  dest="/etc/systemd/system/snmp_exporter.service"  mode="a+x"
+  when: ansible_service_mgr == 'systemd'
+  notify:
+    - restart systemd snmp
+  tags: ['snmp', 'snmp-service', 'snmp-conf-update', 'service-update']
+
+- name: copy INIT script to server
+  template: src="snmp_exporter.sysvinit.{{ ansible_os_family|lower }}.sh.j2"  dest="/etc/init.d/snmp_exporter"  mode="a+x"
+  when: ansible_service_mgr != 'systemd'
+  notify:
+    - restart service snmp
+  tags: ['snmp', 'snmp-service', 'snmp-conf-update', 'service-update']
+
+#- name: set INIT status
+#  service: name=snmp_exporter enabled=yes
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['snmp', 'snmp-service', 'snmp-conf-update']
+
+#- name: ensure snmp started
+#  service: name=snmp_exporter state=started
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['snmp', 'snmp-service', 'snmp-conf-update']
+
+#- meta: flush_handlers
+
+#- name: ensure snmp service is enabled and started
+#  service:
+#    name: snmp_exporter
+#    state: started
+#    enabled: yes
+#  tags: ['snmp', 'snmp-service', 'snmp-conf-update']
+
+- name: ensure snmp service is restarted
+  service:
+    name: snmp_exporter
+    state: restarted
+    enabled: yes
+  tags: ['snmp', 'snmp-service', 'snmp-conf-update', 'service-update']
+
+- name: ensure snmp systemd is restarted
+  systemd:
+    name: snmp_exporter
+    state: restarted
+    daemon_reload: True
+  tags: ['snmp', 'snmp-service', 'snmp-conf-update', 'service-update']
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: /tmp/firewall_setting.sh
+    mode: "a+x"
+  tags: ['snmp', 'snmp-service', 'snmp-conf-update', 'firewall-update']
+
+- name: firewall configure
+  command: "bash /tmp/firewall_setting.sh"
+  tags: ['snmp', 'snmp-service', 'snmp-conf-update', 'firewall-update']

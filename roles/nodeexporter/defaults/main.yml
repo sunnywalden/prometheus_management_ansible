@@ -1,0 +1,33 @@
+tmp_dir: "/tmp"
+base_path: "/data/application"
+pid_path: "/data/run"
+log_path: "/data/log"
+
+gosu_version: "1.11"
+
+nodeexporter_port: 9100
+
+prometheus_user: "prometheus"
+prometheus_group: "prometheus"
+
+## node_exporter install config
+nodeexporter_version: "0.17.0-rc.0"
+
+nodeexporter_install_path: "{{ base_path }}/nodeexporter"
+collector_textfile_directory: "{{ nodeexporter_install_path }}/text_metrics"
+
+collectors_settings:
+  filesystem.ignored-fs-types: "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|rootfs|nfs)$"
+  filesystem.ignored-mount-points: "^/(dev|proc|sys|boot|run.*|var/lib/kubelet/.+|var/lib/docker/.+|data/docker/overlay)($|/)"
+  diskstats.ignored-devices: "^(ram|loop|fd|(h|v)d[a-z]|nvme\\d+n\\d+p|tmpfs|md|up-|sr|rootfs)(\\d*)$"
+  netstat.fields: "^(.*_(InErrors|InErrs)|Ip_Forwarding|Ip(6|Ext)_(InOctets|OutOctets)|Icmp6?_(InMsgs|OutMsgs)|TcpExt_(Listen.*|Syncookies.*)|Tcp_(ActiveOpens|PassiveOpens|RetransSegs|CurrEstab)|Udp6?_(InDatagrams|OutDatagrams|NoPorts))$"
+  netdev.ignored-devices: "^(tap|cali|docker|veth|tun).*$"
+  netclass.ignored-devices: "^(tap|cali|docker|veth|tun).*$"
+
+enable_collectors: [tcpstat", "processes"]
+disable_collectors: ["mdadm"]
+
+log_level: "error"
+web_telemetry_path: "/metrics"
+
+metrics_bash_files: ["basic_metrics.sh","frequent_metrics.sh"]

@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  author: 'InfluxData'
+  description: 'Install and configure InfluxDB, a time-series database'
+  company: 'InfluxData'
+  license: 'MIT'
+  min_ansible_version: 2.2
+  platforms:
+    - name: 'EL'
+      versions:
+        - 6
+        - 7
+    - name: 'Ubuntu'
+      versions:
+        - 'trusty'
+        - 'utopic'
+        - 'vivid'
+        - 'xenial'
+    - name: 'Debian'
+      versions:
+        - 'stretch'
+        - 'jessie'
+        - 'wheezy'
+  categories:
+    - "clustering"
+    - "database:nosql"
+    - "database:time_series"
+    - "influxdata"
+    - "influxdb"
+    - "enterprise"
+  dependencies: []

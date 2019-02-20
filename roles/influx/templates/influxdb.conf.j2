@@ -1,0 +1,25 @@
+hostname = "{{ ansible_hostname|mandatory }}"
+[meta]
+  dir = "{{ meta.dir|mandatory }}" #数据分盘有利于读写
+  logging-enabled = true
+  pprof-enabled = true
+[data]
+  enabled = true
+  index-version = "tsi1"
+  dir = "{{ data.dir|mandatory }}"
+  wal-dir = "{{ data.wal_dir|mandatory }}"
+  wal-logging-enabled = true
+  max-series-per-database = 0
+  max-values-per-tag = 0
+  trace-logging-enabled = true
+  query-log-enabled = true
+  cache-max-memory-size = "1g"
+  cache-snapshot-memory-size = '25m'
+[http]
+  enabled = true
+  bind-address = "0.0.0.0:{{ influx_port }}"
+  auth-enabled = false
+  log-enabled = true #启用后可以看到请求源地址
+[continuous_queries]
+  log-enabled = true
+  enabled = true

@@ -1,0 +1,11 @@
+# example
+# # prometheus-playbook  prometheus-monitoring.yaml
+- name: install grafana
+  hosts: grafana
+  remote_user: root
+  gather_facts: true
+  vars:
+    grafana_version: 5.3.4
+  roles:
+    - grafana
+

@@ -1,0 +1,6 @@
+[dev]
+192.168.10 use_proxy=false
+[test]
+192.168.11 use_proxy=true
+[pro]
+192.168.12 use_proxy=true

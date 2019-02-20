@@ -1,0 +1,6 @@
+[dev]
+192.168.1.10 prome_type="slave" scrape_nodes=true scrape_snmp=true scrape_blackbox=true
+[test]
+192.168.1.11 prome_type="slave" scrape_nodes=true scrape_snmp=true scrape_blackbox=true
+[pro]
+192.168.1.12 prome_type="slave" scrape_nodes=true scrape_snmp=true scrape_blackbox=true

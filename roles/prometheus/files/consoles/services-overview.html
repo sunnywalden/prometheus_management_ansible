@@ -1,0 +1,69 @@
+{{ template "head" . }}
+
+{{ template "prom_right_table_head" }}
+  <tr>
+    <th colspan="2">Overview</th>
+  </tr>
+  <tr>
+    <td>Health</td>
+    <td>{{ template "prom_query_drilldown" (args (printf "avg(probe_success{job='blackbox',instance='%s'})" .Params.instance) ) }}</td>
+  </tr>
+  <tr>
+    <td>Failed Regex</td>
+    <td>{{ template "prom_query_drilldown" (args (printf "probe_failed_due_to_regex{job='blackbox',instance='%s'}" .Params.instance)) }}</td>
+  </tr>
+  <tr>
+    <td>Status Code</td>
+    <td>{{ template "prom_query_drilldown" (args (printf "probe_http_status_code{job='blackbox',instance='%s'}" .Params.instance)) }}</td>
+  </tr>
+
+
+{{ template "prom_right_table_tail" }}
+
+{{ template "prom_content_head" . }}
+  <h1>Services Overview - {{ .Params.instance }}</h1>
+
+  <h3>Http Status Code</h3>
+  <div id="CodeGraph"></div>
+  <script>
+  new PromConsole.Graph({
+    node: document.querySelector("#CodeGraph"),
+    expr: "avg(probe_http_status_code{job='blackbox',instance='{{ .Params.instance }}'})",
+    name: 'probe http status code',
+    yAxisFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+    yHoverFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+    yTitle: "Service",
+    yUnits: "",
+  })
+  </script>
+
+  <h3>Failed Regex</h3>
+  <div id="RegexGraph"></div>
+  <script>
+  new PromConsole.Graph({
+    node: document.querySelector("#RegexGraph"),
+    expr: "avg(probe_failed_due_to_regex{job='blackbox',instance='{{ .Params.instance }}'})",
+    name: 'failed regex',
+    yAxisFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+    yHoverFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+    yTitle: "Failed Regex",
+    yUnits: "",
+  })
+  </script>
+
+  <h3>Health Status</h3>
+  <div id="StatusGraph"></div>
+  <script>
+  new PromConsole.Graph({
+    node: document.querySelector("#StatusGraph"),
+    expr: "avg(probe_success{job='blackbox',instance='{{ .Params.instance }}'})",
+    name: 'probe success',
+    yAxisFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+    yHoverFormatter: PromConsole.NumberFormatter.humanizeNoSmallPrefix,
+    yTitle: "Status",
+    yUnits: "",
+  })
+  </script>
+{{ template "prom_content_tail" . }}
+
+{{ template "tail" }}

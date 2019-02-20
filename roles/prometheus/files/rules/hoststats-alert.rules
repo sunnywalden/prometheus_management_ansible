@@ -1,0 +1,95 @@
+groups:
+- name: 主机系统状态
+  rules:
+  - alert: CPU使用率异常通知
+    expr: (1 - avg(irate({__name__=~"^node_cpu(_seconds_total|)$",mode="idle"}[1m])) by (instance_ip)) * 100 > 95.00
+    for: 1m
+    labels:
+      severity: INFO
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机CPU使用率大于95%"
+      description: "{{ $value }}"
+  - alert: CPU使用率异常警告
+    expr: (1 - avg(irate({__name__=~"^node_cpu(_seconds_total|)$",mode="idle"}[1m])) by (instance_ip)) * 100 > 95.00
+    for: 10m
+    labels:
+      severity: WARNING
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机CPU使用率大于95%"
+      description: "{{ $value }}"
+  - alert: CPU使用率异常紧急
+    expr: (1 - avg(irate({__name__=~"^node_cpu(_seconds_total|)$",mode="idle"}[1m])) by (instance_ip)) * 100 > 95.00
+    for: 20m
+    labels:
+      severity: CRITICAL
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机CPU使用率大于95%"
+      description: "{{ $value }}"
+  - alert: 内存使用率异常通知
+    expr: (({__name__=~"node_memory_MemTotal(_bytes|)",job="nodes"} - {__name__=~"node_memory_MemFree(_bytes|)",job="nodes"} - {__name__=~"node_memory_Buffers(_bytes|)",job="nodes"} - {__name__=~"node_memory_Cached(_bytes|)",job="nodes"}) / {__name__=~"node_memory_MemTotal(_bytes|)",job="nodes"}) * 100 > 95.00
+    for: 1m
+    labels:
+      severity: INFO
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机内存使用率大于95%"
+      description: "{{ $value }}"
+#      description: "{{ $labels.instance_ip }} 内存使用率大于95% (当前值: {{ $value }})"
+  - alert: 内存使用率异常警告
+    expr: (({__name__=~"node_memory_MemTotal(_bytes|)",job="nodes"} - {__name__=~"node_memory_MemFree(_bytes|)",job="nodes"} - {__name__=~"node_memory_Buffers(_bytes|)",job="nodes"} - {__name__=~"node_memory_Cached(_bytes|)",job="nodes"}) / {__name__=~"node_memory_MemTotal(_bytes|)",job="nodes"}) * 100 > 95.00
+    for: 10m
+    labels:
+      severity: WARNING
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机内存使用率大于95%"
+      description: "{{ $value }}"
+  - alert: 内存使用率异常紧急
+    expr: (({__name__=~"node_memory_MemTotal(_bytes|)",job="nodes"} - {__name__=~"node_memory_MemFree(_bytes|)",job="nodes"} - {__name__=~"node_memory_Buffers(_bytes|)",job="nodes"} - {__name__=~"node_memory_Cached(_bytes|)",job="nodes"}) / {__name__=~"node_memory_MemTotal(_bytes|)",job="nodes"}) * 100 > 95.00
+    for: 20m
+    labels:
+      severity: CRITICAL
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机内存使用率大于95%"
+      description: "{{ $value }}"
+  - alert: 磁盘使用率异常通知
+    expr: (1 - avg({__name__=~"node_filesystem_avail(_bytes|)",job="nodes",device=~"/.*",mountpoint=~"^/(data|)$"}/ {__name__=~"node_filesystem_size(_bytes|)",job="nodes",device=~"/.*",mountpoint=~"^/(data|)$"}) by (mountpoint,instance_ip) ) * 100 > 95.00
+    for: 1m
+    labels:
+      severity: INFO
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机{{$labels.mountpoint}}磁盘使用率大于95%"
+      description: "{{ $value }}"
+#      description: "{{$labels.instance_ip}}: 磁盘使用率大于95% (当前值为: {{ $value }}"
+  - alert: 磁盘使用率异常警告
+    expr: (1 - avg({__name__=~"node_filesystem_avail(_bytes|)",job="nodes",device=~"/.*",mountpoint=~"^/(data|)$"}/ {__name__=~"node_filesystem_size(_bytes|)",job="nodes",device=~"/.*",mountpoint=~"^/(data|)$"}) by (mountpoint,instance_ip)) * 100 > 95.00
+    for: 10m
+    labels:
+      severity: WARNING
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机{{$labels.mountpoint}}磁盘使用率大于95%"
+      description: "{{ $value }}"
+  - alert: 磁盘使用率异常紧急
+    expr: (1 - avg({__name__=~"node_filesystem_avail(_bytes|)",job="nodes",device=~"/.*",mountpoint=~"^/(data|)$"}/ {__name__=~"node_filesystem_size(_bytes|)",job="nodes",device=~"/.*",mountpoint=~"^/(data|)$"}) by (mountpoint,instance_ip)) * 100 > 95.00
+    for: 20m
+    labels:
+      severity: CRITICAL
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+      summary: "{{ $labels.instance_ip }}主机{{$labels.mountpoint}}磁盘使用率大于95%"
+      description: "{{ $value }}"

@@ -1,0 +1,132 @@
+global:
+  scrape_interval:     30s # 每15s采集一次数据.
+  evaluation_interval: 30s # 每30s做一次告警检测.
+  scrape_timeout:      10s  #采集超时10s (默认10s).
+  external_labels:
+    monitor: {{ prome_type }}
+
+remote_read:
+  - url: http://{{ influx_host }}:{{ influx_port }}/api/v1/prom/read?db={{ influxdb_prometheus_database }}
+    read_recent: true
+remote_write:
+  - url: http://{{ influx_host }}:{{ influx_port }}/api/v1/prom/write?db={{ influxdb_prometheus_database }}
+    queue_config:
+      capacity: 100000
+      max_shards: 10000
+      max_samples_per_send: 1000
+
+rule_files:
+  - {{ prometheus_rule_path }}/*.rules
+
+alerting:
+  alertmanagers:
+    - scheme: http
+      path_prefix: /{{ alertmanager_prefix }}
+      static_configs:
+        - targets:
+{% for alertmanager_host in alertmanager_hosts %}
+            - {{ alertmanager_host }}:{{ alertmanager_port }}
+{% endfor %}
+
+scrape_configs:
+{% if prome_type is defined %}
+{% if prome_type == "master" %}
+  - job_name: 'federate'
+    honor_labels: true
+    metrics_path: '/{{ prometheus_prefix }}/federate'
+    params:
+      'match[]':
+        - '{job="prometheus"}'
+        - '{__name__=~"job:.*"}'
+        - '{__name__=~"node.*"}'
+        - '{__name__=~"push_gateway.*"}'
+    static_configs:
+      - targets: {{ prometheus_node_hosts }}
+{% else %}
+  - job_name: 'prometheus'
+    metrics_path: "/{{ prometheus_prefix }}/metrics"
+    scrape_interval: 10s
+    scrape_timeout:  10s
+    static_configs:
+      - targets:
+        - {{ ansible_all_ipv4_addresses[0] }}:{{ prometheus_port }}
+{% if external_scrape_targets is defined %}
+{% for scrape_prome_host in external_scrape_targets %}
+        - {{ scrape_prome_host }}:{{ prometheus_port }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% endif %}
+
+  - job_name: 'push_gateway'
+    static_configs:
+      - targets:
+{% for pushgateway_host in pushgateway_hosts %}
+        - {{ pushgateway_host }}:{{ pushgateway_port }}
+{% endfor %}
+
+# A list of scrape configurations.
+{% if scrape_nodes is defined %}
+  - job_name: 'node'
+    file_sd_configs:
+      - files:
+        - {{ prometheus_file_sd_path }}/nodes.json
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: (.+):(.+)
+      replacement: ${1}
+      target_label: instance_ip
+{% endif %}
+
+{% if scrape_snmp is defined %}
+  - job_name: 'snmp'
+    scrape_interval: 120s
+    scrape_timeout: 120s
+    file_sd_configs:
+      - files:
+        - {{ prometheus_file_sd_path }}/snmps.json
+    metrics_path: /snmp
+    params:
+      module: [if_mib]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__address__]
+        target_label: instance_ip
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ ansible_all_ipv4_addresses[0] }}:{{ snmp_port }}
+{% endif %}
+
+{% if scrape_blackbox is defined %}
+{% for blackbox_job,apps in apps_info.items() %}
+  - job_name: 'blackbox_{{ blackbox_job }}'
+    metrics_path: /probe
+    params:
+      module: {{ '[' }}{{ blackbox_job }}{{ ']'}}  # rong-boot qos
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ blackbox_hosts }}:{{ blackbox_port }}
+    static_configs:
+{% for app_name,app_info in apps.items() %}
+{% for ins_info in app_info.urls %}
+{% for ip_info in ins_info.instance_ip %}
+      - targets:
+        - {{ ins_info.instance_proto }}://{{ ip_info }}:{{ ins_info.instance_port }}{{ ins_info.instance_path }}
+        labels:
+          app_name: {{ app_name }}
+          app_group: {{ app_info.app_group }}
+          info: {{ app_info.info }}
+          env: {{ app_info.env }}
+          team: {{ app_info.team }}
+          alert_time: {{ evalue_time[app_info.warning_level] }}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% endif %}

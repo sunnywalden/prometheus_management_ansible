@@ -1,0 +1,14 @@
+# example
+# # prometheus-playbook pushgateway.yaml
+
+- name: install pushgateway
+  hosts: dev
+  remote_user: root
+  gather_facts: true
+#  vars:
+#    pushgateway_version: 0.15.2
+  vars_files:
+    - vars/all.yml
+    - vars/pushgateway.yml
+  roles:
+    - pushgateway

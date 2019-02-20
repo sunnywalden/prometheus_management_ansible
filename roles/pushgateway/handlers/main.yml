@@ -1,0 +1,40 @@
+---
+# file: handlers/main.yml
+#
+
+- name: start systemd pushgateway
+  systemd:
+    name: pushgateway
+    state: started
+    enabled: true
+    daemon_reload: True
+
+- name: stop systemd pushgateway
+  systemd:
+    name: pushgateway
+    state: stopped
+    daemon_reload: True
+
+- name: restart systemd pushgateway
+  systemd:
+    name: pushgateway
+    state: restarted
+    daemon_reload: True
+
+- name: reload systemd pushgateway
+  systemd:
+    name: pushgateway
+    state: reloaded
+    daemon_reload: True
+
+- name: start service pushgateway
+  service: name=pushgateway state=started enabled=yes
+
+- name: stop service pushgateway
+  service: name=pushgateway state=stopped
+
+- name: restart service pushgateway
+  service: name=pushgateway state=restarted
+
+- name: reload service pushgateway
+  service: name=pushgateway state=reloaded

@@ -1,0 +1,31 @@
+groups:
+- name: 应用
+  rules:
+  - alert: "应用健康状态异常通知"
+    expr: avg_over_time(probe_success{job=~"blackbox.*"}[1m]) == 0
+#    expr: avg_over_time(probe_success{job=~"blackbox.*",instance_ip=~"10.1.(1|7).(90|12)"}[1m]) >= 0
+    for: 1m
+    labels:
+      severity: INFO
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+#      summary: "【监控】服务-{{ $labels.app_name }}-1个实例发生报警, 触发规则：{{ $labels.__name__ }}"
+  - alert: "应用健康状态异常警告"
+    expr: avg_over_time(probe_success{job=~"blackbox.*"}[1m]) == 0
+#    expr: avg_over_time(probe_success{job=~"blackbox.*",instance_ip=~"10.1.(1|7).(90|12)"}[1m]) >= 0
+    for: 10m
+    labels:
+      severity: WARNING
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:
+  - alert: "应用健康状态异常紧急"
+    expr: avg_over_time(probe_success{job=~"blackbox.*"}[1m]) == 0
+#    expr: avg_over_time(probe_success{job=~"blackbox.*",instance_ip=~"10.1.(1|7).(90|12)"}[1m]) >= 0
+    for: 20m
+    labels:
+      severity: CRITICAL
+      at_mobiles: 18792648142,15692130327
+      is_at_all: true
+    annotations:

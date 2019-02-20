@@ -1,0 +1,11 @@
+---
+# file: tasks/main.yml
+#- include: set-role-variables.yml
+- name: Gather variables for each operating system
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution | lower }}.yml"
+    - "{{ ansible_os_family | lower }}.yml"
+
+- include: preinstall-init.yml
+- include: install-blackbox.yml

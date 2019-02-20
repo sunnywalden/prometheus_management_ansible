@@ -1,0 +1,188 @@
+---
+# file: tasks/install-node-exporter.yml
+#
+# Install Prometheus node-exporter.
+#
+# @see http://prometheus.io/docs/introduction/getting_started/
+#
+
+
+- name: create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  with_items:
+    - "{{ base_path }}"
+  tags: ['nodeexporter', 'nodeexporter-install']
+
+- name: create install directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    state: directory
+    mode: "755"
+  with_items:
+    - "{{ pid_path }}/nodeexporter"
+    - "{{ log_path }}/nodeexporter"
+    - "{{ nodeexporter_install_path }}"
+  tags: ['nodeexporter', 'nodeexporter-install', 'check-service', 'service-update', 'service-restart-manual']
+
+- name: set internal variables for convenience
+  set_fact:
+    nodeexporter_tag: "node_exporter-{{ nodeexporter_version }}.{{ platform_suffix[ansible_userspace_bits] }}"
+  tags: ['nodeexporter', 'nodeexporter-install']
+
+- name: set download url
+  set_fact:
+    nodeexporter_tarball_url: "https://github.com/prometheus/node_exporter/releases/download/v{{ nodeexporter_version }}/{{ nodeexporter_tag }}.tar.gz"
+  tags: ['nodeexporter', 'nodeexporter-install']
+
+#- name: set daemon dir
+#  set_fact:
+#    nodeexporter_daemon_dir: "{{ nodeexporter_install_path }}"
+#  tags: ['nodeexporter', 'nodeexporter-install']
+
+- name: download and untar nodeexporter tarball
+  unarchive:
+    src: "{{ nodeexporter_tarball_url }}"
+    dest: "{{ nodeexporter_install_path }}"
+    copy: no
+  register: result
+  until: result.failed == false
+  retries: 5
+  delay: 10
+  tags: ['nodeexporter', 'nodeexporter-install']
+
+- name: copy files
+  copy:
+    src: "{{ nodeexporter_install_path }}/{{ nodeexporter_tag }}/{{ item }}"
+    remote_src: yes
+    dest: "{{ nodeexporter_install_path }}/{{ item }}"
+  with_items:
+    - node_exporter
+  tags: ['nodeexporter', 'nodeexporter-install']
+
+
+- name: mkdir for nodeexporter textfile metrics
+  file: path={{ collector_textfile_directory }}  state=directory owner="{{ prometheus_user }}" group="{{ prometheus_group }}" mode=0664
+  when: collector_textfile_directory != ''
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'collector-update']
+
+- name: copy metric collection scripts to server
+  template: src="{{ item }}.j2"  dest="{{ nodeexporter_install_path }}/{{ item }}"  mode="a+x" owner="{{ prometheus_user }}" group="{{ prometheus_group }}"
+  with_items:
+     - "{{ metrics_bash_files }}"
+#    - basic_metrics.sh
+#    - frequent_metrics.sh
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'collector-update']
+
+- name: stop service before update
+  systemd:
+    name: node_exporter
+    state: stopped
+    daemon_reload: True
+  when: ansible_service_mgr == 'systemd'
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update']
+
+#- name: copy service config file to server
+#  template: src="node_exporter.conf.j2"  dest="/etc/systemd/node_exporter.conf"  mode="a+r"
+#  when: ansible_service_mgr == 'systemd'
+#  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update',  'service-update']
+
+- name: copy service script to server
+  template: src="node_exporter.service.j2"  dest="/etc/systemd/system/node_exporter.service"  mode="a+x"
+  when: ansible_service_mgr == 'systemd'
+  notify:
+    - start systemd node_exporter
+    - reload systemd node_exporter
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update',  'service-update']
+
+- name: stop service before update
+  service:
+    name: node_exporter
+    state: stopped
+  when: ansible_service_mgr != 'systemd'
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update']
+
+- name: copy init script to server
+  template: src="node_exporter.init.j2"  dest="/etc/init.d/node_exporter"  mode="a+x"
+  when: ansible_service_mgr != 'systemd'
+  notify:
+    - start service node_exporter
+    - reload service node_exporter
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-update']
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: /tmp/firewall_setting.sh
+    mode: "a+x"
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'firewall-update']
+    
+- name: firewall configure
+  command: "bash /tmp/firewall_setting.sh"
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'firewall-update']
+
+- name: get metrics
+  command: "bash {{ nodeexporter_install_path }}/{{ item }}"
+  async : 5
+  poll : 3
+  with_items:
+     - "{{ metrics_bash_files }}"
+#    - basic_metrics.sh
+#    - frequent_metrics.sh
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'collector-update']
+
+#- name: stop service before update
+#  systemd:
+#    name: node_exporter
+#    state: stopped
+#    daemon_reload: True
+#  when: ansible_service_mgr == 'systemd'
+#  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-update']
+
+#- name: copy service script to server
+#  template: src="node_exporter.service.j2"  dest="/etc/systemd/system/node_exporter.service"  mode="a+x"
+#  when: ansible_service_mgr == 'systemd'
+#  notify:
+#    - start systemd node_exporter
+#    - reload systemd node_exporter
+#  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-update']
+
+#- name: copy service restart script to server
+#  template: src="{{ wk_dir }}/scripts/centos6_node_exporter_restart.sh"  dest="/tmp/node_exporter_restart.sh"  mode="a+x"
+#  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-restart-manual']
+
+#- name: restart service after update
+#      "bash /tmp/node_exporter_restart.sh"
+#  async : 5
+#  poll : 3
+#  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-restart-manual']
+
+- name: check if node_exporter service is exists
+  shell: netstat -tunlp | grep 9100|grep -v grep|wc -l
+  async : 5
+  poll : 3
+  register: result
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-update', 'service-restart-manual', 'check-service']
+
+- name: check result
+  debug: msg="node_exporter is down, {{ result.stdout }}"
+  when: result.stdout.find("0") != -1 
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-update', 'service-restart-manual', 'check-service']
+
+- name: start service when is not
+  service:
+    name: node_exporter
+    state: started
+  when: result.stdout.find("0") != -1 and ansible_service_mgr != 'systemd'
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-update', 'service-restart-manual', 'check-service']
+
+- name: start systemd when is not
+  systemd:
+    name: node_exporter
+    state: started
+  when: result.stdout.find("0") != -1 and ansible_service_mgr == 'systemd'
+  tags: ['nodeexporter', 'nodeexporter-install', 'nodeexporter-conf-update', 'service-update', 'service-restart-manual', 'check-service']

@@ -1,0 +1,27 @@
+[Unit]
+Description=dingtalk - Webhook Dingtalk.
+Documentation=http://theo.im/blog/2017/10/16/release-prometheus-dingtalk-webhook-for-dingtalk/
+After=network.target
+
+[Service]
+Type=simple
+User={{ prometheus_user }}
+Group={{ prometheus_group }}
+
+ExecStart={{ dingtalk_install_path }}/prometheus-webhook-dingtalk \
+--web.listen-address={{ ansible_all_ipv4_addresses[0] }}:{{ dingtalk_port }} \
+{% for group_name,webhook_url in dingtalk_webhooks.items() %} --ding.profile={{ group_name }}=https://oapi.dingtalk.com/robot/send?access_token={{ webhook_url }}{% endfor %}{% if template_file is defined %} --template.file={{ dingtalk_install_path }}/{{ template_file }}{% endif %}
+
+ExecReload=/bin/kill -HUP $MAINPID
+SyslogIdentifier=dingtalk
+Restart=always
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,37 @@
+---
+
+- name: install libselinux-python binary for Ansible to work
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ prometheus_selinux_packages }}"
+#- name: install libselinux-python binary for Ansible to work
+#  yum: name=libselinux-python state=present
+#  when: ansible_pkg_mgr == "yum"
+
+- name: update nss
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ prometheus_nss_packages }}"
+#- name: update nss
+#  yum: name=nss state=latest update_only=yes update_cache=yes
+#  when: ansible_pkg_mgr == "yum"
+
+#- name: update nss
+#  apt: name=libnss3* state=latest update_only=yes update_cache=yes
+#  when: ansible_pkg_mgr == "apt"
+
+- name: create group
+  group: name={{ item }}  state=present
+  with_items:
+  - "{{ prometheus_group }}"
+
+- name: create prometheus user
+  user:
+    name: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    createhome: no
+    shell: /sbin/nologin
+    comment: "Prometheus User"
+    state: present

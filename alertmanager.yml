@@ -1,0 +1,20 @@
+# example
+# # prometheus-playbook alertmanager.yaml
+
+- name: install alertmanager
+  #hosts: dev
+  #hosts: test
+  hosts: pro
+  remote_user: root
+  gather_facts: true
+  vars:
+#    alertmanager_route:
+#      group_by: "['alertname', 'cluster', 'app_group', 'app_name', 'env']"
+#    inhibit_rules:
+#      equal: "['alertname']"
+#    alertmanager_version: 0.15.2
+  vars_files:
+    - vars/all.yml
+    - vars/alertmanager.yml
+  roles:
+    - alertmanager

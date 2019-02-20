@@ -1,0 +1,259 @@
+---
+# file: tasks/install-prometheus.yml
+#
+# Install Prometheus server.
+#
+# @see http://prometheus.io/docs/introduction/getting_started/
+#
+
+
+- name: create install directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    state: directory
+    mode: "755"
+  with_items:
+    - "{{ pid_path }}/prometheus"
+    - "{{ log_path }}/prometheus"
+    - "{{ prometheus_install_path }}"
+    - "{{ prometheus_config_path }}"
+  tags: ['prometheus', 'prometheus-install', 'service-update']
+
+- block:
+
+    - name: set internal variables for convenience
+      set_fact:
+        prometheus_subdir: "{{ prometheus_install_path }}/prometheus-{{ prometheus_version }}.{{ platform_suffix[ansible_architecture] }}"
+      tags: ['prometheus', 'prometheus-install']
+
+
+    - name: set download url
+      set_fact:
+        prometheus_tarball_url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.{{ platform_suffix[ansible_architecture]|default('linux-amd64') }}.tar.gz"
+      tags: ['prometheus', 'prometheus-install']
+
+    - name: download and untar prometheus tarball
+      unarchive:
+        src: "{{ prometheus_tarball_url }}"
+        dest: "{{ prometheus_install_path }}"
+        copy: no
+      register: result
+      until: result.failed == false
+      retries: 5
+      delay: 10
+      tags: ['prometheus', 'prometheus-download']
+
+#    - name: debug
+#      debug:
+#        msg: "{{ result }}"
+#      tags: ['prometheus', 'prometheus-download']
+
+    - name: create directories
+      file:
+        path: "{{ prometheus_install_path }}/{{ item }}"
+        state: directory
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: "go-w"
+        recurse: yes
+      with_items:
+        - console_libraries
+        - consoles
+      tags: ['prometheus', 'prometheus-download']
+
+
+#    - name: debug
+#      debug:
+#        msg: "{{ libs_result }}, {{ consoles_result }}"
+#      tags: ['prometheus', 'prometheus-download']
+
+    - name: copy files
+      command: "cp -r {{ prometheus_install_path }}/prometheus-{{ prometheus_version }}.{{ platform_suffix[ansible_architecture] }}/{{ item }} {{ prometheus_install_path }}"
+      with_items:
+        - console_libraries
+        - consoles
+      tags: ['prometheus', 'prometheus-install']
+
+    - name: copy files
+      copy:
+        src: "{{ prometheus_install_path }}/prometheus-{{ prometheus_version }}.{{ platform_suffix[ansible_architecture] }}/{{ item }}"
+        remote_src: yes
+        dest: "{{ prometheus_install_path }}"
+      with_items:
+        - prometheus
+        - promtool
+      tags: ['prometheus', 'prometheus-install']
+
+    - name: remove directory of tar
+      file:
+        path: "{{ prometheus_install_path }}/prometheus-{{ prometheus_version }}.{{ platform_suffix[ansible_architecture] }}"
+        state: absent
+      tags: ['prometheus', 'prometheus-install']
+
+
+- name: set permissions, owner and group
+  file:
+    path: "{{ prometheus_install_path }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "go-w"
+    recurse: yes
+  tags: ['prometheus', 'prometheus-install']
+
+- name: mkdir for config and data
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "u=rwx,g=rwx,o=rx"
+    recurse: yes
+  with_items:
+    - "{{ prometheus_install_path }}"
+    - "{{ prometheus_install_path }}/nodes_discovery"
+    - "{{ prometheus_rule_path }}"
+    - "{{ prometheus_file_sd_path }}"
+    - "{{ prometheus_data_path }}"
+  tags: ['prometheus', 'prometheus-install']
+
+- name: copy service script to server
+  template: src="prometheus.service.j2"  dest="/etc/systemd/system/prometheus.service"  mode="a+x"
+  when: ansible_service_mgr == 'systemd'
+  notify:
+    - restart systemd prometheus
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'service-update']
+
+- name: copy INIT script to server
+  template: src="../templates/prometheus.sysvinit.{{ ansible_os_family|lower }}.sh.j2"  dest="/etc/init.d/prometheus"  mode="a+x"
+  when: ansible_service_mgr != 'systemd'
+  notify:
+    - restart service prometheus
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'service-update']
+
+- name: copy rule files from playbook's, if any
+  copy:
+    src: "rules/"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: u+rw,g-wx,o-rwx
+    dest: "{{ prometheus_rule_path }}/"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'rules-update']
+
+- name: copy file_ds files from playbook's, if any
+  copy:
+    src: "file_ds/"
+    #state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: u+rw,g-wx,o-rwx
+    dest: "{{ prometheus_file_sd_path }}/"
+#  notify:
+#    - reload service prometheus
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'fileds-update']
+
+- name: copy console libs files from playbook's, if any
+  copy:
+    src: "console_libraries/"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: u+rw,g-wx,o-rwx
+    dest: "{{ prometheus_console_libs_path }}/"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'console-update']
+
+- name: copy consoles files from playbook's, if any
+  copy:
+    src: "consoles/"
+    #state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: u+rw,g-wx,o-rwx
+    dest: "{{ prometheus_consoles_path }}/"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'console-update']
+
+- name: copy file_sd files from playbook's, if any
+  copy:
+    src: "file_ds/"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: u+rw,g-wx,o-rwx
+    dest: "{{ prometheus_file_sd_path }}/"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update']
+
+- name: copy node discovery from playbook's, if any
+  copy:
+    src: "nodes_discovery/"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: u+rw,g-wx,o-rwx
+    dest: "{{ prometheus_install_path }}/nodes_discovery/"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'nodes-update']
+
+#- name: debug info
+#  debug: msg="{{ item.key }} {{ item.value }}"
+#  with_dict: "{{ apps_info }}"
+#  tags: ['prometheus', 'prometheus-conf-update', 'conf-update']
+
+- name: copy prometheus main config file from role, if necessary
+  template:
+    src: "prometheus.yml.j2"
+    dest: "{{ prometheus_config_path }}/prometheus.yml.new"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: u+rw,g+wx,o-rwx
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'conf-update']
+
+- name: check config file
+  command: "{{ prometheus_install_path }}/promtool check config {{ prometheus_config_path }}/prometheus.yml.new"
+  register: prome_conf_check
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'conf-update']
+
+- name: config reload if check valid pass
+  debug: msg="{{ prome_conf_check.stdout }}"
+  when: prome_conf_check.stdout.find('FAILED') == -1
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'conf-update']
+
+- name: copy prometheus main config file from role, if necessary
+  template:
+    src: "prometheus.yml.j2"
+    dest: "{{ prometheus_config_path }}/prometheus.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: u+rw,g+wx,o-rwx
+  when: prome_conf_check.stdout.find('FAILED') == -1
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'conf-update']
+
+- name: ensure prometheus reloaded
+  service: name=prometheus state=reloaded enabled=yes
+  when: ansible_service_mgr != 'systemd'
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'service-reload']
+
+- name: ensure prometheus reloaded
+  systemd:
+    name: prometheus
+    state: reloaded
+    daemon_reload: True
+    enabled: yes
+  when: ansible_service_mgr == 'systemd'
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'service-reload']
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: ~/firewall_setting.sh
+    mode: "a+x"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'firewall-update']
+
+- name: firewall configure
+  command: "cd ~ && bash firewall_setting.sh"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'firewall-update']
+
+- name: node discovery service depend install
+  command: "cd {{ prometheus_install_path }}/nodes_discovery && pip install -r requirements.txt"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'nodes-update']
+
+- name: node discovery service run instantly
+  command: "cd {{ prometheus_install_path }}/nodes_discovery/main && nohup /usr/bin/python nodes_discovery.py &"
+  tags: ['prometheus', 'prometheus-service', 'prometheus-conf-update', 'nodes-update']

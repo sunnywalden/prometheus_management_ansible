@@ -1,0 +1,42 @@
+#!/bin/bash
+
+
+CENTOS_SERIES=`egrep 'CentOS|Redhat' /etc/redhat-release|wc -l`
+SYSTEM_BITS_CHECK=`uname -a|grep x86_64|wc -l`
+SYSTEM_VERSION_CHECK=`grep ' 7.' /etc/redhat-release |wc -l`
+
+check_version() {
+  if [ $CENTOS_SERIES -eq 1 -a $SYSTEM_VERSION_CHECK -eq 1 ];then
+    echo "system version is ceontos 7"
+    return centos7
+  elif [ $CENTOS_SERIES -eq 1 -a $SYSTEM_VERSION_CHECK -eq 0 ];then
+    echo "system version is ceontos 6"
+    return centos6
+  else
+    echo "system version is ubuntu"
+    return others
+  fi
+}
+
+set_firewall() {
+  os_version=check_version
+  if [ $os_version == "centos7" ];then
+    check_iptable=`service iptables status|grep -v inactive|grep active|grep -v grep|wc -l`
+  else
+    check_iptable=`service iptables status|egrep '1|running' |grep -v grep|wc -l`
+  fi
+  if [ $check_iptable -ne 0 ];then
+    check_iptables_setting=`iptables -L -n |grep {{ prometheus_port }} |grep -v grep|wc -l`
+    if [ $check_iptables_setting -eq 0 ];then
+      iptables -A INPUT -p tcp --dport {{ prometheus_port }} -j ACCEPT
+      service iptables save
+    fi
+  fi
+  echo 'firewall setting finished!'
+  echo '**************************************************'
+  echo '**************************************************'
+  echo '*******   we all finished here             *******'
+  echo '**************************************************'
+}
+
+set_firewall

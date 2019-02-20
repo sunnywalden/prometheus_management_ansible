@@ -1,0 +1,127 @@
+---
+# file: tasks/install-pushgateway.yml
+#
+# Install Prometheus pushgateway.
+#
+# @see http://prometheus.io/docs/introduction/getting_started/
+#
+
+#- name: install dependencies
+#  include: preinstall-init.yml
+
+- name: set internal variables
+  set_fact:
+    pushgateway_daemon_dir: "{{ pushgateway_install_path }}"
+  tags: ['pushgateway', 'pushgateway-install']
+
+- name: create install directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    state: directory
+    mode: 0755
+  with_items:
+    - "{{ pid_path }}/pushgateway"
+    - "{{ log_path }}/pushgateway"
+    - "{{ pushgateway_install_path }}"
+  tags: ['pushgateway', 'pushgateway-install', 'service-update']
+
+- block:
+    - name: set internal variables for convenience, part 1
+      set_fact:
+        pushgateway_signature: "pushgateway-{{ pushgateway_version }}.{{ platform_suffix[ansible_userspace_bits] }}"
+      tags: ['pushgateway', 'pushgateway-install']
+
+
+    - name: set internal variables for convenience, part 2
+      set_fact:
+        pushgateway_untar_path: "{{ pushgateway_install_path }}"
+        pushgateway_daemon_dir: "{{ pushgateway_install_path }}"
+      tags: ['pushgateway', 'pushgateway-install']
+
+
+    - name: set download url
+      set_fact:
+        pushgateway_tarball_url: "https://github.com/prometheus/pushgateway/releases/download/v{{ pushgateway_version }}/{{ pushgateway_signature }}.tar.gz"
+      tags: ['pushgateway', 'pushgateway-conf']
+
+    - name: download and uncompress pushgateway tarball
+      unarchive:
+        src: "{{ pushgateway_tarball_url }}"
+        dest: "{{ pushgateway_install_path }}"
+        copy: no
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: "go-w"
+      register: pushgateway_download_result
+      until: pushgateway_download_result.failed == false
+      retries: 5
+      delay: 10
+      tags: ['pushgateway', 'pushgateway-install']
+
+    - name: copy the built pushgateway to the install path
+      command: "mv {{ pushgateway_install_path }}/{{ pushgateway_signature }}/pushgateway {{ pushgateway_install_path }}"
+      tags: ['pushgateway', 'pushgateway-install']
+
+    - name: remove the built path
+      file:
+        path: "{{ pushgateway_install_path }}/{{ pushgateway_signature }}"
+        state: absent
+      tags: ['pushgateway', 'pushgateway-install']
+
+- name: mkdir for pushgateway data (silences.json for now)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "u=rwx,g=rx,o="
+  with_items:
+    - "{{ pushgateway_db_path }}"
+  tags: ['pushgateway', 'pushgateway-install']
+
+- name: copy service script to server
+  template: src="pushgateway.service.j2"  dest="/etc/systemd/system/pushgateway.service"  mode="a+x"
+  when: ansible_service_mgr == 'systemd'
+  notify:
+    - restart systemd pushgateway
+  tags: ['pushgateway', 'pushgateway-service', 'pushgateway-conf-update', 'service-update']
+
+- name: copy INIT script to server
+  template: src="../templates/pushgateway.sysvinit.{{ ansible_os_family|lower }}.sh.j2"  dest="/etc/init.d/pushgateway"  mode="a+x"
+  when: ansible_service_mgr != 'systemd'
+  notify:
+    - restart service pushgateway
+  tags: ['pushgateway', 'pushgateway-service', 'pushgateway-conf-update', 'service-update']
+
+#- name: set INIT status
+#  service: name=pushgateway enabled=yes
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['pushgateway', 'pushgateway-service', 'pushgateway-conf-update']
+
+#- name: set INIT status and start
+#  service: name=pushgateway state=started
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['pushgateway', 'pushgateway-service', 'pushgateway-conf-update']
+
+#- meta: flush_handlers
+#  tags: ['pushgateway', 'pushgateway-service', 'pushgateway-conf-update']
+
+#- name: ensure pushgateway service is enabled and started
+#  service:
+#    name: pushgateway
+#    state: started
+#    enabled: yes
+#  tags: ['pushgateway', 'pushgateway-service', 'pushgateway-conf-update']
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: /tmp/firewall_setting.sh
+    mode: "a+x"
+  tags: ['pushgateway', 'pushgateway-service', 'pushgateway-conf-update', 'firewall-update']
+
+- name: firewall configure
+  command: "bash /tmp/firewall_setting.sh"
+  tags: ['pushgateway', 'pushgateway-service', 'pushgateway-conf-update',  'firewall-update']

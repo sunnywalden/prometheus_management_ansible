@@ -1,0 +1,25 @@
+[Unit]
+Description=Snmp Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User={{ prometheus_user }}
+Group={{ prometheus_group }}
+Type=simple
+ExecStart={{ snmp_install_path }}/snmp_exporter \
+--web.listen-address=:{{ snmp_port }} \
+--config.file={{ snmp_install_path }}/snmp.yml \
+--log.level={{ log_level }}
+
+ExecReload=/usr/bin/kill -HUP $MAINPID
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+# example
+# # prometheus-playbook  prometheus-monitoring.yaml
+- name: install influxdb
+  hosts: influx
+  remote_user: root
+  gather_facts: true
+  vars:
+    influxdb: 1.6.4
+  roles:
+    - influx

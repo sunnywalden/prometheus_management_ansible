@@ -1,0 +1,26 @@
+---
+tmp_dir: "/tmp"
+base_path: "/data/application"
+pid_path: "/data/run"
+log_path: "/data/log"
+
+gosu_version: 1.11
+
+prometheus_user: "prometheus"
+prometheus_group: "prometheus"
+
+dingtalk_version: "0.3.0"
+dingtalk_port: 8060
+
+dingtalk_install_path: "{{ base_path }}/dingtalk"
+dingtalk_config_path: "{{ dingtalk_install_path }}"
+dingtalk_db_path: "{{ dingtalk_install_path }}"
+dingtalk_daemon_dir: "{{ dingtalk_install_path }}"
+
+#dict type, key of the dict is the keyword to match, dict value is consists of dingtalk group nick name and alert wait time
+dingtalk_groups: {"prometheus": "default" ,"service": "devops2","blackbox": "devops"}
+##
+###list type, consists of dingtalk group nick name and its webhook url
+dingtalk_webhooks: {"devops": "3e059619c", "default": "6d3e2f83b", "devops2": "9b6f194677"}
+##
+dingtalk_hosts: ["192.168.1.32"]

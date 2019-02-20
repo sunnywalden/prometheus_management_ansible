@@ -1,0 +1,27 @@
+[Unit]
+Description=Blackbox Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User={{ prometheus_user }}
+Group={{ prometheus_group }}
+Type=simple
+ExecStart={{ blackbox_install_path }}/blackbox_exporter \
+--web.listen-address=:{{ blackbox_port }} \
+--config.file={{ blackbox_install_path }}/blackbox.yml \
+--log.level={{ log_level }} \
+--history.limit={{ history_limit }} \
+--timeout-offset={{ timeout_offset }}
+
+ExecReload=/usr/bin/kill -HUP $MAINPID
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

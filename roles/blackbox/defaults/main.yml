@@ -1,0 +1,69 @@
+---
+
+#安装配置，不建议修改
+tmp_dir: "/tmp"
+base_path: "/data/application"
+
+#请勿改动
+pid_path: "/data/run"
+log_path: "/data/log"
+
+#依赖部署版本，请勿改动
+gosu_version: 1.11
+
+#部署用户
+prometheus_user: "prometheus"
+prometheus_group: "prometheus"
+
+#安装配置，请勿修改。
+blackbox_install_path: "{{ base_path }}/blackbox_exporter"
+blackbox_config_path: "{{ blackbox_install_path }}"
+
+##configure params for startup
+timeout_offset: 0.5
+history_limit: 100
+log_level: "info"
+
+#blackbox_exporter部署端口，使用官方端口规划，不建议改动
+blackbox_port: 9115
+
+#blackbox_exporter部署版本，请留意版本变更说明。
+blackbox_version: "0.13.0"
+
+# http module general config
+modules:
+  http_ok:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+  http_23x:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200,302]
+  http_234:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200,302,404]
+  http_content:
+    prober: http
+    timeout: 5s
+    http:
+      method: POST
+      fail_if_not_matches_regexp:
+        - "up"
+  http_auth_content:
+    prober: http
+    timeout: 5s
+    http:
+      method: POST
+      fail_if_not_matches_regexp:
+        - "up"
+    basic_auth:
+      username: "admin"
+      password: "Kl_Ph9wm6"
+  tcp_connect:
+    prober: tcp
+    timeout: 5s

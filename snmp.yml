@@ -1,0 +1,14 @@
+# example
+# # prometheus-playbook  snmp.yaml
+
+- name: install prometheus snmp_exporter
+  hosts: dev
+  strategy: free
+  remote_user: root
+  gather_facts: true
+  vars:
+  vars_files:
+    - vars/all.yml
+    - vars/snmp.yml
+  roles:
+    - snmp

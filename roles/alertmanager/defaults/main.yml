@@ -1,0 +1,84 @@
+---
+
+##  安装配置
+tmp_dir: "/tmp"
+base_path: "/data/application"
+pid_path: "/data/run"
+log_path: "/data/log"
+
+#服务端口配置，使用官方端口划分，不建议修改。
+alertmanager_port: 9093
+alertmanager_cluster_port: 9094
+
+#服务属主，不建议修改。
+prometheus_user: "prometheus"
+prometheus_group: "prometheus"
+
+#部署的版本，请注意版本变更说明。
+alertmanager_version: "0.15.2"
+
+gosu_version: "1.11"
+#安装配置，请勿修改。
+alertmanager_install_path: "{{ base_path }}/alertmanager"
+alertmanager_config_path: "{{ alertmanager_install_path }}"
+storage_path: "{{ alertmanager_install_path }}/data"
+
+## 启动配置
+#数据存储周期
+data_retention: "120h"
+
+#GC告警周期
+alerts_gc_interval: "30m"
+log_level: info
+
+#代理地理配置，此处不要修改
+web_external_url: "{{ prometheus_site_proto }}://{{ prometheus_site }}/{{ alertmanager_prefix }}"
+
+#路由节点配置，不建议修改
+web_route_prefix: "{{ alertmanager_prefix }}"
+
+cluster_settings:
+  advertise_address: ""
+  peer: ""
+  peer-timeout: "15s"
+  gossip-interval: "200ms"
+  pushpull-interval: "1m0s"
+  tcp-timeout: "10s"
+  probe-timeout: "500ms"
+  probe-interval: "1s"
+  settle-timeout: 1m0s
+  reconnect-interval: "10s"
+  reconnect-timeout: "6h0m0s"
+  resolve-timeout: "5s"
+
+## alertmanager.yml配置
+resolve_timeout: "5s"
+
+alertmanager_route:
+  group_by: ['alertname', 'cluster', 'app_group', 'app_name', 'env']
+  group_wait: "30s"
+  group_interval: "3m"
+  repeat_interval: "2h"
+  receiver: "dingtalk-webhook-default"
+
+alertmanager_subroute:
+  - receiver: "default"
+    group_wait: "30s"
+    match_re:
+      - job: "(prometheus|nodes|push_gateway).*"
+  - receiver: "devops2"
+    group_wait: "30s"
+    match_re:
+      - job: "blackbox_.*"
+  - receiver: "devops"
+    group_wait: "30s"
+    match_re:
+      - app_group: "devops"
+
+inhibit_rules:
+  - source_match:
+      level: "(CRITICAL|ERROR)"
+      env: "prod"
+    target_match:
+      env: 'pre'
+    equal: ['alertname', 'app_group', 'app_name', 'team']

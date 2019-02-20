@@ -1,0 +1,38 @@
+---
+# file: handlers/main.yml
+#
+
+- name: reload systemd snmp
+  systemd:
+    name: snmp_exporter
+    state: reloaded
+    daemon_reload: True
+
+- name: start systemd snmp
+  systemd:
+    name: snmp_exporter
+    state: started
+    enabled: true
+    daemon_reload: True
+
+- name: restart systemd snmp
+  systemd:
+    name: snmp_exporter
+    state: restarted
+    daemon_reload: True
+
+- name: start service snmp
+  service:
+    name: snmp_exporter
+    state: started
+    enabled: yes
+
+- name: restart service snmp
+  service:
+    name: snmp_exporter
+    state: restarted
+
+- name: reload service snmp
+  service:
+    name: snmp_exporter
+    state: reloaded

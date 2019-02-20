@@ -1,0 +1,19 @@
+# example
+# # prometheus-playbook  prometheus.yaml
+
+
+- name: install prometheus server
+  #hosts: pro
+  #hosts: test
+  hosts: dev
+  #hosts: tmp
+  remote_user: root
+  gather_facts: true
+#  vars:
+#    prometheus_version: 2.5.0
+  vars_files:
+    - vars/all.yml
+    - vars/prometheus.yml
+    - vars/system_vars.yml
+  roles:
+    - prometheus

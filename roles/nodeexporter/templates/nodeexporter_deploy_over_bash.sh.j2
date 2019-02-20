@@ -1,0 +1,8 @@
+#!/bin/bash
+
+nodes_url='ftp://10.1.5.100/software/monitor/node_exporter_deploy/node_exporter_install.sh'
+store_file='/tmp/node_exporter_install.sh'
+
+wget -q -t 3 -N --no-check-certificate -O ${store_file} ${nodes_url}
+
+bash ${store_file}

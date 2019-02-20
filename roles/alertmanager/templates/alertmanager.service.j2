@@ -1,0 +1,33 @@
+[Unit]
+Description=alertmanager - Prometheus Alert Manager.
+Documentation=https://github.com/prometheus/alertmanager
+After=network.target
+
+[Service]
+Type=simple
+User={{ prometheus_user }}
+Group={{ prometheus_group }}
+
+ExecStart={{ alertmanager_install_path }}/alertmanager \
+  --config.file={{ alertmanager_install_path }}/alertmanager.yml\
+  --storage.path={{ storage_path }} \
+  --data.retention={{ data_retention }} \
+  --alerts.gc-interval={{ alerts_gc_interval }} \
+  --log.level={{ log_level }} \
+  --web.listen-address=:{{ alertmanager_port }} \
+{% if web_external_url %} --web.external-url={{ web_external_url }}{% endif %}{% if web_route_prefix %} --web.route-prefix={{ web_route_prefix }}{% endif %}
+{% if cluster_peer %} --cluster.peer={{ cluster_peer }}:{{ alertmanager_cluster_port }} --cluster.listen-address=:{{ alertmanager_cluster_port }}{% endif %}
+
+ExecReload=/bin/kill -HUP $MAINPID
+SyslogIdentifier=alertmanager
+Restart=always
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

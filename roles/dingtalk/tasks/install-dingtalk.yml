@@ -1,0 +1,134 @@
+---
+# file: tasks/install-dingtalk.yml
+#
+# Install Prometheus dingtalk.
+#
+# @see http://prometheus.io/docs/introduction/getting_started/
+#
+
+- name: create directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    state: directory
+    mode: 0755
+    recurse: yes
+  with_items:
+    - "{{ pid_path }}/dingtalk"
+    - "{{ log_path }}/dingtalk"
+    - "{{ dingtalk_install_path }}"
+  tags: ['dingtalk', 'dingtalk-conf', 'service-update']
+
+- block:
+
+    - name: set internal variables for convenience, part 1
+      set_fact:
+        dingtalk_signature: "prometheus-webhook-dingtalk-{{ dingtalk_version }}.{{ platform_suffix[ansible_userspace_bits] }}"
+      tags: ['dingtalk', 'dingtalk-install']
+
+    - name: set internal variables for convenience, part 2
+      set_fact:
+        dingtalk_profile: "{{ item }}"
+      with_items:
+        - "{{ dingtalk_groups }}"
+      tags: ['dingtalk', 'dingtalk-install', 'service-update']
+
+    - name: set internal variables for convenience, part 3
+      set_fact:
+        dingtalk_untar_path: "{{ dingtalk_install_path }}"
+        dingtalk_daemon_dir: "{{ dingtalk_install_path }}"
+      tags: ['dingtalk', 'dingtalk-install']
+
+
+    - name: set download url for dingtalk
+      set_fact:
+        dingtalk_tarball_url: "https://github.com/timonwong/prometheus-webhook-dingtalk/releases/download/v{{ dingtalk_version }}/{{ dingtalk_signature }}.tar.gz"
+      tags: ['dingtalk', 'dingtalk-download', 'dingtalk-install']
+
+    - name: download and uncompress dingtalk tarball
+      unarchive:
+        src: "{{ dingtalk_tarball_url }}"
+        dest: "{{ dingtalk_untar_path }}"
+        copy: no
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: "go-w"
+      register: result
+      until: result.failed == false
+      retries: 5
+      delay: 10
+      tags: ['dingtalk', 'dingtalk-download', 'dingtalk-install']
+
+    - name: copy files
+      copy:
+        src: "{{ dingtalk_install_path }}/{{ dingtalk_signature }}/{{ item }}"
+        remote_src: yes
+        dest: "{{ dingtalk_install_path }}/{{ item }}"
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: "u=rwx,g=rx,o="
+      with_items:
+        - prometheus-webhook-dingtalk
+        - default.tmpl
+      tags: ['dingtalk', 'dingtalk-install']
+
+
+- name: copy custom template
+  copy:
+    src: "{{ item }}"
+    dest: "{{ dingtalk_install_path }}/{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+#    recurse: yes
+    mode: 0755
+  with_items:
+    - prometheus-webhook-dingtalk
+    - dingtalk.tmpl
+  tags: ['dingtalk', 'dingtalk-install', 'dingtalk-conf-update', 'conf-update']
+
+- name: copy service script to server
+  template: src="dingtalk.service.j2"  dest="/etc/systemd/system/dingtalk.service"  mode="0664" owner="{{ prometheus_user }}" group="{{ prometheus_group }}" 
+  when: ansible_service_mgr == 'systemd'
+  notify:
+    - restart systemd dingtalk
+  tags: ['dingtalk', 'dingtalk-service', 'dingtalk-conf-update', 'service-update']
+
+- name: copy INIT script to server
+  template: src="dingtalk.sysvinit.{{ ansible_os_family|lower }}.sh.j2"  dest="/etc/init.d/dingtalk"  mode="a+x"
+  when: ansible_service_mgr != 'systemd'
+  notify:
+    - restart service dingtalk
+  tags: ['dingtalk', 'dingtalk-service', 'dingtalk-conf-update', 'service-update']
+
+#- name: set INIT status
+#  service: name=dingtalk enabled=yes
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['dingtalk', 'dingtalk-service', 'dingtalk-conf-update']
+
+#- name: set INIT status and start
+#  service: name=dingtalk state=restarted
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['dingtalk', 'dingtalk-service', 'dingtalk-conf-update']
+
+#- meta: flush_handlers
+#  tags: ['dingtalk', 'dingtalk-service', 'dingtalk-conf-update']
+
+#- name: ensure dingtalk service is enabled and started
+#  service:
+#    name: dingtalk
+#    state: started
+#    enabled: yes
+#  when: ansible_service_mgr == 'systemd'
+#  tags: ['dingtalk', 'dingtalk-service', 'dingtalk-conf-update']
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: /tmp/firewall_setting.sh
+    mode: "a+x"
+  tags: ['dingtalk', 'dingtalk-service', 'dingtalk-conf-update', 'firewall-update']
+
+- name: firewall configure
+  command: "bash /tmp/firewall_setting.sh"
+  tags: ['dingtalk', 'dingtalk-service', 'dingtalk-conf-update', 'firewall-update']

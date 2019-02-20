@@ -1,0 +1,151 @@
+---
+# file: tasks/install-blackbox.yml
+#
+# Install blackbox_exporter.
+#
+#
+
+- name: create install directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    state: directory
+    mode: 0755
+  with_items:
+    - "{{ pid_path }}/blackbox"
+    - "{{ log_path }}/blackbox"
+    - "{{ blackbox_install_path }}"
+    - "{{ blackbox_config_path }}"
+  tags: ['blackbox', 'blackbox-install', 'service-update']
+
+- block:
+
+    - name: set internal variables for convenience
+      set_fact:
+        blackbox_subdir: "{{ blackbox_install_path }}/blackbox-{{ blackbox_version }}.{{ platform_suffix[ansible_userspace_bits] }}"
+      tags: ['blackbox', 'blackbox-install']
+
+
+    - name: set download url
+      set_fact:
+        blackbox_tarball_url: "https://github.com/prometheus/blackbox_exporter/releases/download/v{{ blackbox_version }}/blackbox_exporter-{{ blackbox_version }}.{{ platform_suffix[ansible_userspace_bits] }}.tar.gz"
+      tags: ['blackbox', 'blackbox-install']
+
+    - name: download and untar blackbox tarball
+      unarchive:
+        src: "{{ blackbox_tarball_url }}"
+        dest: "{{ blackbox_install_path }}"
+        copy: no
+      register: result
+      until: result.failed == false
+      retries: 5
+      delay: 10
+      tags: ['blackbox', 'blackbox-download']
+
+    - name: copy files
+      copy:
+        src: "{{ blackbox_install_path }}/blackbox_exporter-{{ blackbox_version }}.{{ platform_suffix[ansible_userspace_bits] }}/{{ item }}"
+        remote_src: yes
+        dest: "{{ blackbox_install_path }}"
+      with_items:
+        - blackbox_exporter
+      tags: ['blackbox', 'blackbox-install']
+
+    - name: remove directory of tar
+      file:
+        path: "{{ blackbox_install_path }}/blackbox-{{ blackbox_version }}.{{ platform_suffix[ansible_userspace_bits] }}"
+        state: absent
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: "755"
+      tags: ['blackbox', 'blackbox-install']
+
+#- name: set permissions, owner and group
+#  file:
+#    path: "{{ blackbox_install_path }}"
+#    state: directory
+#    owner: "{{ prometheus_user }}"
+#    group: "{{ prometheus_group }}"
+#    mode: "755"
+#    recurse: yes
+#  tags: ['blackbox', 'blackbox-install']
+
+- name: mkdir for config and data
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "u=rwx,g=rwx,o=rx"
+    recurse: yes
+  with_items:
+    - "{{ blackbox_install_path }}"
+  tags: ['blackbox', 'blackbox-install']
+
+- name: copy blackbox main config file from role, if necessary
+  template:
+    src: "blackbox.yml.j2"
+    dest: "{{ blackbox_config_path }}/blackbox.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: 0755
+  tags: ['blackbox', 'blackbox-install', 'conf-update']
+
+- name: copy service script to server
+  template: src="blackbox_exporter.service.j2"  dest="/etc/systemd/system/blackbox_exporter.service"  mode="a+x"
+  when: ansible_service_mgr == 'systemd'
+  notify:
+    - restart systemd blackbox
+  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update', 'service-update']
+
+- name: copy INIT script to server
+  template: src="blackbox_exporter.sysvinit.{{ ansible_os_family|lower }}.sh.j2"  dest="/etc/init.d/blackbox_exporter"  mode="a+x"
+  when: ansible_service_mgr != 'systemd'
+  notify:
+    - restart service blackbox
+  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update', 'service-update']
+
+#- name: set INIT status
+#  service: name=blackbox_exporter enabled=yes
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update']
+
+#- name: ensure blackbox started
+#  service: name=blackbox_exporter state=started
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update']
+
+#- meta: flush_handlers
+
+#- name: ensure blackbox service is enabled and started
+#  service:
+#    name: blackbox_exporter
+#    state: started
+#    enabled: yes
+#  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update']
+
+- name: ensure blackbox service is restarted
+  service:
+    name: blackbox_exporter
+    state: restarted
+    enabled: yes
+  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update', 'service-update']
+
+- name: ensure blackbox systemd is restarted
+  systemd:
+    name: blackbox_exporter
+    state: restarted
+    daemon_reload: True
+  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update', 'service-update']
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: /tmp/firewall_setting.sh
+    mode: "a+x"
+  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update', 'firewall-update']
+
+- name: firewall configure
+  command: "bash /tmp/firewall_setting.sh"
+  tags: ['blackbox', 'blackbox-service', 'blackbox-conf-update', 'firewall-update']

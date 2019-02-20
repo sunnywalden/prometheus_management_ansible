@@ -1,0 +1,42 @@
+influx_host: "10.1.16.32"
+
+webhook_hosts: "10.1.16.34"
+dingtalk_hosts: ["10.1.16.34"]
+alertmanager_hosts: ["10.1.16.33","10.1.16.34"]
+pushgateway_hosts: ["10.1.16.34"]
+snmp_hosts: "10.1.16.34"
+blackbox_hosts: "10.1.5.17"
+grafana_hosts: "10.1.16.32"
+prometheus_hosts: ["10.1.16.34","10.1.16.33"]
+
+cluster_peer: "10.1.16.33"
+
+alertmanager_subroute:
+  - receiver: "devops"
+    group_wait: "30s"
+    group_interval: "30s"
+    repeat_interval: "30s"
+    match_re:
+      job: "influxdb|grafana|alertmanager|push_gateway|snmp_exporter|prometheus|blackbox_exporter|nodes"
+      severity: "INFO|info"
+  - receiver: "voiceops"
+    group_wait: "30s"
+    group_interval: "270s"
+    repeat_interval: "24h"
+    match_re:
+      job: "^blackbox_.*$"
+      severity: "CRITICAL|critical"
+  - receiver: "smsops"
+    group_wait: "30s"
+    group_interval: "150s"
+    repeat_interval: "570s"
+    match_re:
+      job: "^blackbox_.*$"
+      severity: "WARNING|warning"
+  - receiver: "servers"
+    group_wait: "30s"
+    group_interval: "30s"
+    repeat_interval: "30s"
+    match_re:
+      job: "^blackbox_.*$"
+      severity: "INFO|info"

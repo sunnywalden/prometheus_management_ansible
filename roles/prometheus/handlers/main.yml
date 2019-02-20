@@ -1,0 +1,40 @@
+---
+# file: handlers/main.yml
+#
+
+- name: start systemd prometheus
+  systemd:
+    name: prometheus
+    state: started
+    enabled: true
+    daemon_reload: True
+
+- name: stop systemd prometheus
+  systemd:
+    name: prometheus
+    state: stopped
+    daemon_reload: True
+
+- name: restart systemd prometheus
+  systemd:
+    name: prometheus
+    state: restarted
+    daemon_reload: True
+
+- name: reload systemd prometheus
+  systemd:
+    name: prometheus
+    state: reloaded
+    daemon_reload: True
+
+- name: start service prometheus
+  service: name=prometheus state=started enabled=yes
+
+- name: stop service prometheus
+  service: name=prometheus state=stopped
+
+- name: restart service prometheus
+  service: name=prometheus state=restarted
+
+- name: reload service prometheus
+  service: name=prometheus state=reloaded

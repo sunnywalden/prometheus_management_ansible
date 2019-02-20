@@ -1,0 +1,39 @@
+---
+# file: handlers/main.yml
+#
+
+- name: start systemd alertmanager
+  systemd:
+    name: alertmanager
+    state: started
+    daemon_reload: True
+
+- name: stop systemd alertmanager
+  systemd:
+    name: alertmanager
+    state: stopped
+    daemon_reload: True
+
+- name: restart systemd alertmanager
+  systemd:
+    name: alertmanager
+    state: restarted
+    daemon_reload: True
+
+- name: reload systemd alertmanager
+  systemd:
+    name: alertmanager
+    state: reloaded
+    daemon_reload: True
+
+- name: start service alertmanager
+  service: name=alertmanager state=started
+
+- name: stop service alertmanager
+  service: name=alertmanager state=stopped
+
+- name: restart service alertmanager
+  service: name=alertmanager state=restarted
+
+- name: reload service alertmanager
+  service: name=alertmanager state=reloaded

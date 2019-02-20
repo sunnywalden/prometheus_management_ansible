@@ -1,0 +1,7 @@
+---
+platform_suffix:
+  32: 'linux-386'
+  64: 'linux-amd64'
+suffix:
+  32: 'i386'
+  64: 'amd64'

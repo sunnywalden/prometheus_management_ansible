@@ -1,0 +1,48 @@
+[Unit]
+Description=prometheus - Prometheus Server.
+Documentation=https://github.com/prometheus/prometheus
+After=network.target
+
+[Service]
+Type=simple
+User={{ prometheus_user }}
+Group={{ prometheus_group }}
+
+Environment="GOMAXPROCS={{ ansible_processor_vcpus|default(ansible_processor_count) }}"
+ExecStart={{ prometheus_install_path }}/prometheus \
+	--config.file={{ prometheus_install_path }}/prometheus.yml \
+	--web.listen-address=0.0.0.0:{{ prometheus_port }} \
+	--storage.tsdb.path={{ prometheus_data_path }} \
+	--web.read-timeout={{ web_read_timeout }} \
+	--web.max-connections={{ web_max_connections }} \
+	--web.console.templates={{ prometheus_install_path }}/consoles \
+	--web.console.libraries={{ prometheus_install_path }}/console_libraries \
+	--storage.tsdb.retention={{ storage_tsdb_retention }} \
+	--storage.remote.flush-deadline={{ storage_remote_flush_deadline }} \
+	--storage.remote.read-sample-limit={{ storage_remote_read_sample_limit }} \
+	--storage.remote.read-concurrent-limit={{ storage_remote_read_concurrent_limit }} \
+	--rules.alert.for-outage-tolerance={{ rules_alert_for_outage_tolerance }} \
+	--rules.alert.for-grace-period={{ rules_alert_for_grace_period }} \
+	--rules.alert.resend-delay={{ rules_alert_resend_delay }} \
+	--alertmanager.notification-queue-capacity={{ alertmanager_notification_queue_capacity }} \
+	--alertmanager.timeout={{ alertmanager_timeout }} \
+	--query.lookback-delta={{ query_lookback_delta }} \
+	--query.timeout={{ query_timeout }} \
+	--query.max-concurrency={{ query_max_concurrency }} \
+	--query.max-samples={{ query_max_samples }} \
+	--log.level={{ log_level }}  {% if web_external_url != '' %} --web.external-url={{ web_external_url }} {% endif %} {% if web_route_prefix != '' %} --web.route-prefix="{{ web_route_prefix }}" {% endif %} {% if web_user_assets != '' %} --web.user-assets={{ web_user_assets }} {% endif %} {% if web_enable_lifecycle == 'true' %} --web.enable-lifecycle {% endif %} {% if web_enable_admin_api == 'true' %} --web.enable-admin-api {% endif %} {% if storage_tsdb_no_lockfile == 'true' %} --storage.tsdb.no-lockfile {% endif %}
+
+ExecReload=/bin/kill -HUP $MAINPID
+SyslogIdentifier=prometheus
+Restart=always
+LimitNOFILE=infinity
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

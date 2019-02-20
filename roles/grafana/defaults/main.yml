@@ -1,0 +1,13 @@
+---
+
+grafana_port: 3000
+grafana_version: 5.3.4
+grafana_group: grafana
+
+base_path: /data/application
+log_path: "{{ base_path }}/../log"
+pid_path: "{{ base_path }}/../run"
+grafana_path: "{{ base_path }}/grafana"
+grafana_cert_path: "{{ grafana_path }}/cert"
+grafana_data_path: "{{ grafana_path }}/data"
+grafana_plugins_path: "{{ grafana_path }}/plugins"

@@ -1,0 +1,123 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# processname:       dingtalk
+# Short-Description: Prometheus Dingtalk.
+# Description:       The Dingtalk receives alerts from one or more Prometheus servers.
+#                    It manages those alerts, including silencing, inhibition, aggregation
+#                    and sending out notifications via methods such as email, PagerDuty and HipChat.
+#
+# chkconfig: 2345 80 80
+# config:  {{ dingtalk_config_path }}/dingtalk.yml
+# pidfile: {{ pid_path }}/dingtalk.pid
+#
+#
+### END INIT INFO
+
+#set -e
+
+# Source function library.
+. /etc/init.d/functions
+
+
+NAME=dingtalk
+DESC="Prometheus Dingtalk"
+DAEMON={{ dingtalk_daemon_dir }}/prometheus-webhook-dingtalk
+USER={{ prometheus_user }}
+PID="{{ pid_path }}/dingtalk/$NAME.pid"
+LOG="{{ log_path }}/dingtalk/$NAME.log"
+#CHDIR="{{ dingtalk_db_path }}"
+GOSU=/usr/local/bin/gosu
+
+DAEMON_OPTS="--web.listen-address={{ ansible_all_ipv4_addresses[0] }}:{{ dingtalk_port }}"
+
+{% for group_name,webhook_url in dingtalk_webhooks.items() %}
+  DAEMON_OPTS="$DAEMON_OPTS  --ding.profile={{ group_name }}=https://oapi.dingtalk.com/robot/send?access_token={{ webhook_url }}"
+{% endfor %}
+
+{% if dingtalk_opts is defined %}
+DAEMON_OPTS="$DAEMON_OPTS {{ dingtalk_opts }}"
+{% endif %}
+{% if template_file is defined %}
+--template.file={{ dingtalk_install_dir }}/{{ template_file }}
+{% endif %}
+
+RETVAL=0
+
+
+# Check if DAEMON binary exist
+[ -f $DAEMON ] || exit 0
+
+service_checks() {
+  # Check if START variable is set to "yes", if not we exit.
+
+  check_alive=`ps axf|grep ${DAEMON} | grep -v grep |wc -l`
+  if [ "$check_alive" -ne 0 ]; then
+    echo "Service already started; skip..."
+    exit 1
+  else
+    echo "Service was aborted abnormally; clean the PID file and continue..."
+    if [ -f "$PID" ]; then
+      rm -f "$PID"
+    fi
+  fi
+}
+
+start() {
+  service_checks $1
+  $GOSU $USER   $DAEMON $DAEMON_OPTS  > $LOG 2>&1  &
+  RETVAL=$?
+  echo $! > $PID
+}
+
+stop() {
+  killproc -p $PID -b $DAEMON  $NAME
+  if [ -f $PID ]; then
+    rm -rf $PID
+  fi
+  RETVAL=$?
+}
+
+reload() {
+  killproc -p $PID -b $DAEMON  $NAME -HUP
+  RETVAL=$?
+}
+
+#chdir $CHDIR
+
+case "$1" in
+  start)
+    start
+    echo -n $"Starting $DESC -" "$NAME" $'\n'
+    ;;
+
+  stop)
+    echo -n $"Stopping $DESC -" "$NAME" $'\n'
+    stop
+    ;;
+
+  reload)
+    echo -n $"Reloading $DESC configuration -" "$NAME" $'\n'
+    reload
+    ;;
+
+  restart|force-reload)
+    stop
+    start
+    echo -n $"Restarting $DESC -" "$NAME" $'\n'
+    ;;
+
+  syntax)
+    $DAEMON --help
+    ;;
+
+  status)
+    status -p $PID $DAEMON
+    ;;
+
+  *)
+    echo -n $"Usage: /etc/init.d/$NAME {start|stop|reload|restart|force-reload|syntax|status}" $'\n'
+    ;;
+esac
+
+exit $RETVAL

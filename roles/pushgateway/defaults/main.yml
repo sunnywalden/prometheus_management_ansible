@@ -1,0 +1,42 @@
+---
+
+#安装配置
+tmp_dir: "/tmp"
+base_path: "/data/application"
+pid_path: "/data/run"
+log_path: "/data/log"
+
+#安装版本
+gosu_version: 1.11
+
+#部署端口，使用官方端口规划，不建议改动
+pushgateway_port: 9091
+
+#部署用户
+prometheus_user: "prometheus"
+prometheus_group: "prometheus"
+
+#部署版本，请留意版本更新说明
+pushgateway_version: "0.6.0"
+
+#安装配置，请勿修改
+pushgateway_install_path: "{{ base_path }}/pushgateway"
+pushgateway_daemon_dir: "{{ pushgateway_install_path }}"
+pushgateway_config_path: "{{ pushgateway_install_path }}"
+pushgateway_db_path: "{{ pushgateway_install_path  }}"
+
+#暴露metrics的路径,不建议修改
+web_telemetry_path: "/metrics"
+
+#反向代理路径
+web_route_prefix: ""
+
+#metrics持久化存储的文件
+persistence_file: ""
+
+#metrics存储到文件的频率
+persistence_interval: "5m"
+
+#日志配置
+log_level: "info"
+log_format: "logger:stderr"

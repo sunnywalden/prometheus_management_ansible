@@ -1,0 +1,53 @@
+# example
+# # prometheus-playbook  node-exporter.yaml
+
+- name: install prometheus node_exporter
+  #hosts: dev
+  #hosts: test
+  hosts: fix:!excludes
+  #hosts: server1:!excludes
+  #hosts: server2:!excludes
+  #hosts: server3:!excludes
+  #hosts: server4:!excludes
+  #hosts: server5:!excludes
+  #hosts: server6:!excludes
+  strategy: free
+  remote_user: root
+  gather_facts: yes
+  vars:
+    wk_dir: /root/prometheus_deploy
+    enable_collectors: ["tcpstat","processes"]
+  vars_files:
+    - vars/all.yml
+    - vars/node_exporter.yml
+  roles:
+    - nodeexporter
+
+- name: manage node_exporter in redhat/centos 5 series
+  hosts: cent5-dev:!excludes
+  #hosts: cent5-test:!excludes
+  #hosts: centos5:!excludes
+  remote_user: root
+  gather_facts: no
+  vars_files:
+    - vars/all.yml
+    - vars/node_exporter.yml
+  vars:
+    wk_dir: /root/prometheus_deploy
+    enable_collectors: ["tcpstat"]
+
+  tasks:
+    - name: execute nodeexporter update script on target system
+      script:
+        ./scripts/centos5_node_exporter_update.sh
+      tags: ['nodeexporter', 'nodeexporter-conf-update', 'collector-update', 'service-update']
+  
+    - name: execute raw command to upgrade system
+      raw:
+        service node_exporter start
+      tags: ['nodeexporter', 'nodeexporter-conf-update', 'service-restart']
+
+    - name: enable service
+      raw:
+        chkconfig node_exporter on
+      tags: ['nodeexporter', 'start-manual']

@@ -1,0 +1,47 @@
+#开发环境信息
+influx_host: "10.1.16.35"
+
+webhook_hosts: "10.1.16.33" ##develop environment
+dingtalk_hosts: ["10.1.16.35"] ##develop environment
+pushgateway_hosts: ["10.1.16.35"] ##develop environment
+snmp_hosts: "10.1.16.35" ##develop environment
+blackbox_hosts: "10.1.5.17" ##develop environment
+grafana_hosts: "10.1.16.35" ##develop environment
+prometheus_hosts: ["10.1.16.35"] ##develop environment
+alertmanager_hosts: ["10.1.16.35"]
+
+#集群设置
+cluster_peer: ""
+
+#反向代理设置
+web_external_url: ""
+
+alertmanager_subroute:
+  - receiver: "devops"
+    group_wait: "30s"
+    group_interval: "30s"
+    repeat_interval: "30s"
+    match_re:
+      job: "influxdb|grafana|alertmanager|push_gateway|snmp_exporter|prometheus|blackbox_exporter|nodes"
+      severity: "INFO|info"
+  - receiver: "devops"
+    group_wait: "30s"
+    group_interval: "30s"
+    repeat_interval: "30s"
+    match_re:
+      job: "^blackbox_.*$"
+      severity: "INFO|info"
+  - receiver: "smsdevops"
+    group_wait: "30s"
+    group_interval: "150s"
+    repeat_interval: "570s"
+    match_re:
+      job: "^blackbox_.*$"
+      severity: "WARNING|warning"
+  - receiver: "voicedevops"
+    group_wait: "30s"
+    group_interval: "270s"
+    repeat_interval: "24h"
+    match_re:
+      job: "^blackbox_.*$"
+      severity: "CRITICAL|critical"

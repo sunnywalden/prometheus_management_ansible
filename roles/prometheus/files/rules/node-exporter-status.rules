@@ -1,0 +1,31 @@
+groups:
+- name: 监控客户端
+  rules:
+  - alert: 监控插件心跳异常通知
+    expr: avg_over_time(up{job="nodes"}[1m]) == 0
+    for: 3m
+    labels:
+      severity: CRITICAL
+      at_mobiles: 18792648142
+      is_at_all: false
+    annotations:
+      summary: "{{ $labels.instance }}主机监控插件心跳异常"
+#      description: "位于主机{{ $labels.instance_ip }}上的node_exporter已停止运行，请及时确认！"
+  - alert: 监控插件心跳异常警告
+    expr: avg_over_time(up{job="nodes"}[1m]) == 0
+    for: 10m
+    labels:
+      severity: WARNING
+      at_mobiles: 18792648142
+      is_at_all: false
+    annotations:
+      summary: "{{ $labels.instance }}主机监控插件心跳异常"
+  - alert: 监控插件心跳异常危险
+    expr: avg_over_time(up{job="nodes"}[1m]) == 0
+    for: 20m
+    labels:
+      severity: CRITICAL
+      at_mobiles: 18792648142
+      is_at_all: false
+    annotations:
+      summary: "{{ $labels.instance }}主机监控插件心跳异常"

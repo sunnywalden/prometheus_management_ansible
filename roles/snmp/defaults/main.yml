@@ -1,0 +1,30 @@
+---
+
+#安装配置，不建议修改
+tmp_dir: "/tmp"
+base_path: "/data/application"
+
+#请勿改动
+pid_path: "/data/run"
+log_path: "/data/log"
+
+#依赖部署版本，请勿改动
+gosu_version: 1.11
+
+#部署用户
+prometheus_user: "prometheus"
+prometheus_group: "prometheus"
+
+#安装配置，请勿修改。
+snmp_install_path: "{{ base_path }}/snmp_exporter"
+snmp_config_path: "{{ snmp_install_path }}"
+
+##configure params for startup
+log_level: "error"
+
+#blackbox_exporter部署端口，使用官方端口规划，不建议改动
+snmp_port: 9116
+
+#blackbox_exporter部署版本，请留意版本变更说明。
+snmp_version: "0.14.0"
+

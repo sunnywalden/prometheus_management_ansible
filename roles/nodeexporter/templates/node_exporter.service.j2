@@ -1,0 +1,37 @@
+[Unit]
+Description=Prometheus Node Exporter
+Documentation=https://github.com/prometheus/node_exporter
+After=network.target
+
+[Service]
+Type=simple
+User={{ prometheus_user }}
+Group={{ prometheus_group }}
+
+ExecStart={{ nodeexporter_install_path }}/node_exporter \
+--collector.textfile.directory={{ collector_textfile_directory }} \
+{% for collector_name,collector_setting in collectors_settings.items() %} --collector.{{ collector_name }}="{{ collector_setting }}"{% endfor %} \
+--web.telemetry-path={{ web_telemetry_path }} \
+--web.listen-address=:{{ nodeexporter_port }} \
+--log.level={{ log_level }} \
+{% for en_collector in enable_collectors -%}
+--collector.{{ en_collector }} \
+{% endfor -%}
+{% for dis_collector in disable_collectors -%}
+--no-collector.{{ dis_collector }}
+{% endfor -%}
+ExecReload=/bin/kill -s HUP $MAINPID
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=node_exporter
+Restart=always
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

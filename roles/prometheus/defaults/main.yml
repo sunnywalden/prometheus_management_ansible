@@ -1,0 +1,105 @@
+---
+
+#安装配置，不建议修改
+tmp_dir: "/tmp"
+base_path: "/data/application"
+
+#请勿改动
+pid_path: "/data/run"
+log_path: "/data/log"
+
+#依赖部署版本，请勿改动
+gosu_version: 1.11
+
+pushgateway_version: "0.6.0"
+
+#influxdb部署版本（与influxdb部署保持配置一致），不建议改动
+influx_port: 8086
+
+#alertmanager部署端口，与alertmanager部署保持配置一致
+alertmanager_port: 9093
+alertmanager_cluster_port: 9094
+
+#pushgateway部署端口，与pushgateway部署保持配置一致
+pushgateway_port: 9091
+
+#nodeexporter部署端口，与nodeexporter部署保持配置一致
+nodeexporter_port: 9100
+
+#blackbox_exporter部署端口，与blackbox_exporter部署保持配置一致
+blackbox_port: 9115
+
+#snmp_exporter部署端口，与snmp_exporter部署保持配置一致
+snmp_port: 9116
+
+#influxdb prometheus用数据库
+influxdb_prometheus_database: "prometheus"
+
+#部署用户
+prometheus_user: "prometheus"
+prometheus_group: "prometheus"
+
+#influxdb服务主机
+influx_host: '10.1.16.32'
+
+#nodeexporter部署的版本
+nodeexporter_version: "0.17.0-rc.0"
+
+#安装配置，请勿修改。
+prometheus_install_path: "{{ base_path }}/prometheus"
+prometheus_config_path: "{{ prometheus_install_path }}"
+prometheus_rule_path: "{{ prometheus_install_path }}/rules"
+prometheus_console_libs_path: "{{ prometheus_install_path }}/console_libraries"
+prometheus_consoles_path: "{{ prometheus_install_path }}/consoles"
+prometheus_data_path: "{{ prometheus_install_path }}/data"
+prometheus_file_sd_path: "{{ prometheus_install_path }}/file_ds"
+
+##configure params for startup
+web_read_timeout: "5m"
+web_max_connections: 512
+
+#反向代理域名，请勿修改。
+web_external_url: "{{ prometheus_site_proto }}://{{ prometheus_site }}/{{ prometheus_prefix }}"
+
+#使用反向代理时的子路由
+web_route_prefix: ""
+
+#用户资产访问路径，默认/user。
+web_user_assets: ""
+
+#启用关闭与配置重载API
+web_enable_lifecycle: false
+
+#启动adminAPI
+web_enable_admin_api: true
+
+#本地存储配置，未启用。
+storage_tsdb_retention: "3d"
+#alertmanager部署主机列表
+storage_tsdb_no_lockfile: false
+
+#远端写时限
+storage_remote_flush_deadline: "1m"
+
+#远程读数据大小限制
+storage_remote_read_sample_limit: 5e7
+
+#远程读并发限制
+storage_remote_read_concurrent_limit: 10
+
+rules_alert_for_outage_tolerance: "1h"
+rules_alert_for_grace_period: "10m"
+rules_alert_resend_delay: "1m"
+
+alertmanager_notification_queue_capacity: 10000
+alertmanager_timeout: "10s"
+
+query_lookback_delta: "5m"
+query_timeout: "5m"
+query_max_concurrency: 100
+query_max_samples: 50000000
+
+log_level: "error"
+
+snmp_scrape_interval: 120s
+snmp_scrape_timeout: 120s

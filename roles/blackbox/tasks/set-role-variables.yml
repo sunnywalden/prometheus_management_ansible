@@ -1,0 +1,18 @@
+---
+# file: tasks/set-role-variables.yml
+# set necessary role variables.
+#
+
+- name: set platform suffix
+  set_fact:
+    platform_suffix: 'linux-amd64'
+    suffix: 'amd64'
+  when: ansible_userspace_bits == "64"
+  tags: ['alertmanager', 'pushgateway', 'dingtalk', 'nodeexporter', 'blackbox', 'prometheus', 'alertmanager-conf', 'pushgateway-conf', 'dingtalk-conf', 'nodeexporter-conf', 'prometheus-conf', 'blackbox-conf']
+
+- name: set platform suffix
+  set_fact:
+    platform_suffix: "linux-386"
+    suffix: 'x86'
+  when: ansible_userspace_bits == "32"
+  tags: ['alertmanager', 'pushgateway', 'dingtalk', 'nodeexporter', 'blackbox', 'prometheus', 'alertmanager-conf', 'pushgateway-conf', 'dingtalk-conf', 'nodeexporter-conf', 'prometheus-conf', 'blackbox-conf']

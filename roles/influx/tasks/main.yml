@@ -1,0 +1,100 @@
+---
+
+#- name: "Install packages"
+#  - include: ./roles/prometheus/tasks/set-role-variables.yml
+#  include: ./roles/prometheus/tasks/preinstall-init.yml 
+
+- name: set platform suffix
+  set_fact:
+    influx_pkg_base_url: 'https://dl.influxdata.com/influxdb/releases'
+  tags: ['influx', 'influx-install']
+
+- name: "Install packages"
+  apt:
+      deb: "{{ influx_pkg_base_url }}/influxdb-{{ influx_version}}_amd64.deb"
+      state: 'present'
+  when: ansible_os_family == 'Debian'
+  tags: ['influx', 'influx-install']
+
+- name: "download packages"
+  get_url:
+    timeout: 120
+    url: "{{ influx_pkg_base_url }}/influxdb-{{ influx_version}}.x86_64.rpm"
+    dest: "{{ tmp_dir }}/influxdb-{{ influx_version}}.x86_64.rpm"
+    validate_certs: 'no'
+  when: ansible_os_family == 'RedHat'
+  register: influx_download_result
+  until: influx_download_result.failed == false
+  retries: 5
+  delay: 10
+  tags: ['influx', 'influx-download']
+
+- name: "send pack to server if download failed"
+  copy:
+    src: "influxdb-{{ influx_version}}.x86_64.rpm"
+    dest: "/tmp/influxdb-{{ influx_version}}.x86_64.rpm"
+  when: ansible_os_family == 'RedHat' and influx_download_result.failed == false
+  tags: ['influx', 'influx-download']
+
+- name: "send pack to server if download failed"
+  copy:
+    src: "influxdb-{{ influx_version}}_amd64.deb"
+    dest: "/tmp/influxdb-{{ influx_version}}_amd64.deb"
+  when: ansible_os_family == 'Debian' and influx_download_result.failed == false
+  tags: ['influx', 'influx-download']
+
+- name: "Install packages"
+  yum:
+    name: "{{ tmp_dir }}/influxdb-{{ influx_version}}.x86_64.rpm"
+    state: 'present'
+    validate_certs: 'no'
+  when: ansible_os_family == 'RedHat'
+  tags: ['influx', 'influx-install']
+
+- name: "Build and install configuration file"
+  template:
+    src: "influxdb.conf.j2"
+    dest: "{{ influx_conf_path }}/influxdb.conf"
+    force: 'yes'
+    backup: 'yes'
+    owner: 'influxdb'
+    group: 'influxdb'
+    mode: 0744
+  notify:
+    - restart influxdb
+  tags: ['influx', 'influx-conf-update']
+
+- name: be sure influxdb is running and enabled
+  service:
+    name: influxdb
+    state: restarted
+    enabled: yes
+  tags: ['influx', 'influx-service', 'influx-conf-update']
+
+- name: Wait for influxdb service to become open on the host, don't start checking for 2 seconds
+  wait_for:
+    port: 8086
+#    delay: 1
+  tags: ['influx', 'sleep', 'influx-service', 'influx-conf-update']
+
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: /tmp/firewall_setting.sh
+    mode: "a+x"
+  tags: ['influx', 'influx-firewall', 'influx-conf-update']
+
+- name: firewall configure
+  command: "bash /tmp/firewall_setting.sh"
+  tags: ['influx', 'influx-firewall', 'influx-conf-update']
+
+- name: Create database for peometheus
+  command: "influx -execute 'CREATE DATABASE prometheus'"
+#  when: deploy_type == 'single'
+  tags: ['influx', 'influx-service', 'influx-conf-update', 'influx-create-database']
+
+- name: Create database for peometheus
+  command: "influx -execute 'CREATE DATABASE prometheus_{{ deploy_type }}'"
+  when: deploy_type != 'single'
+  tags: ['influx', 'influx-service', 'influx-conf-update', 'influx-create-database']

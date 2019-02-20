@@ -1,0 +1,123 @@
+---
+# These vars have the highest precedence, should rarely be changed.
+
+tmp_dir: /tmp
+base_path: /data/application
+pid_path: "{{ base_path }}/run"
+log_path: "{{ base_path }}/log"
+
+gosu_version: 1.11
+go_version: 1.9.7
+
+##install config
+influx_version: 1.7.1
+
+influx_user: influxdb
+influx_group: influxdb
+influx_port: 8086
+influx_data_path: "{{ base_path }}/influxdb"
+influx_data_dir: "{{ base_path }}/influxdb"
+influx_wal_dir: "/run/influxdb"
+influx_conf_path: '/etc/influxdb'
+
+##influxdb.conf config
+global:
+  reporting_disabled: false
+  bind_address: '127.0.0.1:8088'
+
+meta:
+  dir: "{{ influx_data_dir }}/meta"
+  retention_autocreate: true
+  logging_enabled: true
+
+data:
+  dir: "{{ influx_data_dir }}/data"
+  index_version: inmem
+  wal_dir: "{{ influx_wal_dir }}/wal"
+  wal_fsync_delay: 100ms
+  validate_keys: false
+  query_log_enabled: true
+  cache_max_memory_size: 1073741824
+  cache_snapshot_memory_size: 26214400
+  cache_snapshot_write_cold_duration: 10m0s
+  compact_full_write_cold_duration: 4h0m0s
+  compact_throughput: 50331648
+  compact_throughput_burst: 50331648
+  max_series_per_database: 1000000
+  max_values_per_tag: 100000
+  max_concurrent_compactions: 0
+  max_index_log_file_size: 1048576
+  trace_logging_enabled: false
+  tsm_use_madv_willneed: false
+
+coordinator:
+  write_timeout: 1m
+  max_concurrent_queries: 0
+  query_timeout: 0s
+  log_queries_after: 0s
+  max_select_point: 0
+  max_select_series: 0
+  max_select_buckets: 0
+
+retention:
+  enabled: true
+  check_interval: 30m0s
+
+shard_precreation:
+  enabled: true
+  check_interval: 10m0s
+  advance_period: 30m0s
+
+monitor:
+  store_enabled: true
+  store_database: '_internal'
+  store_interval: 10s
+
+subscriber:
+  enabled: true
+  http_timeout: 30s
+  insecure_skip_verify: false
+  ca_certs: ""
+  write_concurrency: 40
+  write_buffer_size: 1000
+
+http:
+  enabled: true
+  bind_address: ':8086'
+  auth_enabled: false
+  log_enabled: true
+  suppress_write_log: false
+  write_tracing: false
+  flux_enabled: false
+  pprof_enabled: true
+  debug_pprof_enabled: false
+  https_enabled: false
+  https_certificate: '/etc/ssl/influxdb.pem'
+  https_private_key:
+  max_row_limit: 0
+  max_connection_limit: 0
+  shared_secret:
+  realm: InfluxDB
+  unix_socket_enabled: false
+  unix_socket_permissions: 0777
+  bind_socket: '/var/run/influxdb.sock'
+  max_body_size: 25000000
+  access_log_path:
+  max_concurrent_write_limit: 0
+  max_enqueued_write_limit: 0
+  enqueued_write_timeout: 30000000000
+
+logging:
+  format: auto
+  level: error
+  suppress_logo: false
+
+continuous_queries:
+  log_enabled: true
+  enabled: true
+  query_stats_enabled: false
+  run_interval: 1s
+
+tls:
+  min_version: ""
+  max_version: ""

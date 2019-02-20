@@ -1,0 +1,39 @@
+global:
+  resolve_timeout: {{ resolve_timeout }}
+
+route:
+  {{ alertmanager_route | to_nice_yaml(indent=2) | indent(2, False) }}
+  routes:
+  {{ alertmanager_subroute | to_nice_yaml(indent=2) | indent(2, False) }}
+receivers:
+{% for dt_group,webhook_url in dingtalk_webhooks.iteritems() %}
+  - name: '{{ dt_group }}'
+    webhook_configs:
+    - send_resolved: true
+{% if use_proxy == "true" %}
+      url: '{{ prometheus_site_proto }}://{{ prometheus_site }}/{{ dingtalk_prefix }}/dingtalk/{{ dt_group }}/send'
+{% else %}
+{% for dingtalk_host in dingtalk_hosts %}
+      url: 'http://{{ dingtalk_host }}:{{ dingtalk_port }}/dingtalk/{{ dt_group }}/send'
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% for group_name,user_infos in connectors.iteritems() %}
+  - name: 'sms{{ group_name }}'
+    webhook_configs:
+{% for name,mobile in user_infos.iteritems() %}
+    - send_resolved: true
+      url: 'http://{{ webhook_hosts }}:{{ webhook_port }}/webhook/sms/{{ mobile }}'
+{% endfor %}
+{% endfor %}
+{% for group_name,user_infos in connectors.iteritems() %}
+  - name: 'voice{{ group_name }}'
+    webhook_configs:
+{% for name,mobile in user_infos.iteritems() %}
+    - send_resolved: true
+      url: 'http://{{ webhook_hosts }}:{{ webhook_port }}/webhook/voice/{{ mobile }}'
+{% endfor %}
+{% endfor %}
+
+inhibit_rules:
+  {{ inhibit_rules | to_nice_yaml(indent=2) | indent(2, False) }}

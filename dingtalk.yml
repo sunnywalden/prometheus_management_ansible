@@ -1,0 +1,17 @@
+# example
+# # prometheus-playbook dingtalk.yaml
+
+
+- name: install webhook-dingtalk
+  hosts: dev
+  #hosts: test
+  #hosts: pro
+  remote_user: root
+  gather_facts: true
+#  vars:
+#    dingtalk_version: 2.5.0
+  vars_files:
+    - vars/all.yml
+    - vars/dingtalk.yml
+  roles:
+    - dingtalk

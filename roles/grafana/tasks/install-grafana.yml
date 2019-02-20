@@ -1,0 +1,176 @@
+---
+# file: tasks/install-grafana.yml
+
+- name: create directories for install
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: "{{ grafana_group }}"
+    group: "{{ grafana_group }}"
+    mode: "u=rwx,g=rwx,o=r"
+  with_items:
+    - "{{ grafana_path }}"
+    - "{{ grafana_data_path }}"
+    - "{{ grafana_plugins_path }}"
+  tags: ['grafana', 'grafana-conf']
+
+#- name: install grafana for redhat series system
+- block:
+    - name: set variables for easy
+      set_fact:
+        pac_name: "grafana-{{ grafana_version }}-1.{{ ansible_userspace_architecture }}.rpm"
+#        download_url: "https://s3-us-west-2.amazonaws.com/grafana-releases/release/{{ pac_name }}"
+      register: var_result
+      tags: ['grafana', 'grafana-conf']
+
+    - name: set variables for easy
+      set_fact:
+        download_url: "https://s3-us-west-2.amazonaws.com/grafana-releases/release/{{ pac_name }}"
+      tags: ['grafana', 'grafana-conf']
+    
+    - name: download grafana
+      get_url:
+        url: "{{ download_url }}"
+        dest: "{{ grafana_path }}/{{ pac_name }}"
+      register: grafana_download_result
+      until: grafana_download_result.failed == false
+      retries: 5
+      delay: 10  
+      tags: ['grafana', 'grafana-install']
+    
+    - name: install grafana from local
+      yum:
+        name: "{{ grafana_path }}/grafana-{{ grafana_version }}-1.{{ ansible_userspace_architecture }}.rpm"
+      tags: ['grafana', 'grafana-install']
+  when: ansible_os_family == 'RedHat'
+
+#- name: install grafana for Debian series system
+- block:
+    - name: set variables for easy
+      set_fact:
+        pac_name: "grafana_{{ grafana_version }}_{{ suffix }}.deb"
+#        download_url: "https://s3-us-west-2.amazonaws.com/grafana-releases/release/{{ pac_name }}"
+      tags: ['grafana', 'grafana-conf']
+    
+    - name: set variables for easy
+      set_fact:
+        download_url: "https://s3-us-west-2.amazonaws.com/grafana-releases/release/{{ pac_name }}"
+      tags: ['grafana', 'grafana-conf']
+    
+    - name: download grafana
+      get_url:
+        url: "{{ download_url }}"
+        dest: "{{ grafana_path/{{ pac_name }}"
+      register: grafana_download_result
+      until: grafana_download_result.failed == false
+      retries: 5
+      delay: 10  
+      tags: ['grafana', 'grafana-install']
+    
+    - name: install grafana from local
+      apt:
+        name: "{{ grafana_path/grafana_{{ grafana_version }}_{{ suffix }}.deb"
+      tags: ['grafana', 'grafana-install']
+  when: ansible_os_family == 'Debian'
+
+- name: grafana data path config
+  file:
+    state: directory
+    path: "{{ grafana_path }}"
+    owner: "{{ grafana_group }}"
+    group: "{{ grafana_group }}"
+    recurse: yes
+    mode: "u=rw,g=r,o=r"
+#  notify:
+#    - restart grafana-server
+  tags: ['grafana', 'grafana-service']
+
+- name: grafana config
+  template:
+    src: "grafana.ini.j2"
+    dest: /etc/grafana/grafana.ini
+    owner: "root"
+    group: "{{ grafana_group }}"
+    mode: "u=rw,g=r,o=r"
+  notify:
+    - restart grafana-server
+  tags: ['grafana', 'grafana-service', 'grafana-conf-update']
+
+- name: grafana service start
+  service:
+    name: grafana-server
+    state: started
+  tags: ['grafana', 'grafana-service']
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: /tmp/firewall_setting.sh
+    mode: "a+x"
+  tags: ['grafana', 'grafana-firewall', 'grafana-conf-update']
+
+- name: firewall configure
+  command: "bash /tmp/firewall_setting.sh"
+  tags: ['grafana', 'grafana-firewall', 'grafana-conf-update']
+
+#- name: firewall configure
+#  iptables:
+#    chain: INPUT
+#    d_port: "{{ grafana_port }}"
+#    ctstate: NEW
+#    jump: ACCEPT
+#  tags: ['grafana', 'grafana-service', 'grafana-firewall']
+
+- name: Install - update Grafana plugins
+  grafana_plugin:
+    name: "{{ item }}"
+    version: latest
+    state: present
+  with_items:
+    - grafana-piechart-panel
+    - grafana-clock-panel
+    - ryantxu-ajax-panel
+    - btplc-alarm-box-panel
+    - ryantxu-annolist-panel
+    - novalabs-annotations-panel
+    - michaeldmoore-annunciator-panel
+    - digiapulssi-breadcrumb-panel
+    - neocat-cal-heatmap-panel
+    - natel-discrete-panel
+    - mtanda-histogram-panel
+    - mtanda-heatmap-epoch-panel
+    - natel-influx-admin-panel
+    - digiapulssi-organisations-panel
+    - zuburqan-parity-report-panel
+    - btplc-peak-report-panel
+    - snuids-radar-panel
+    - natel-plotly-panel
+    - vonage-status-panel
+    - blackmirror1-singlestat-math-panel
+    - blackmirror1-statusbygroup-panel
+    - flant-statusmap-panel
+    - snuids-trafficlights-panel
+    - btplc-trend-box-panel
+    - fatcloud-windrose-panel
+    - grafana-influxdb-flux-datasource
+    - goshposh-metaqueries-datasource
+    - camptocamp-prometheus-alertmanager-datasource
+    - grafana-simple-json-datasource
+    - fzakaria-simple-annotations-datasource
+    - raintank-worldping-app
+    - percona-percona-app
+    - grafana-kubernetes-app
+  notify:
+    - restart grafana-server
+  tags: ['grafana', 'grafana-service', 'grafana-plugin']
+
+- name: Create prometheus datasource
+  grafana_datasource:
+    name: "Prometheus"
+    grafana_url: "http://{{ grafana_host }}:{{ grafana_port }}"
+    grafana_user: "admin"
+    grafana_password: "admin"
+    org_id: "1"
+    ds_type: "prometheus"
+    url: "http://{{ prometheus_host }}:{{ prometheus_port }}"
+  tags: ['grafana', 'grafana-service', 'grafana-datasource']

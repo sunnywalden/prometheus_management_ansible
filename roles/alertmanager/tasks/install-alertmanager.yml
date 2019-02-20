@@ -1,0 +1,162 @@
+---
+# file: tasks/install-alertmanager.yml
+#
+# Install Prometheus alertmanager.
+#
+# @see http://prometheus.io/docs/introduction/getting_started/
+#
+
+- name: create install directories
+  file:  
+    path: "{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    state: directory
+    mode: "go-w"
+  with_items:
+    - "{{ pid_path }}/alertmanager"
+    - "{{ log_path }}/alertmanager"
+    - "{{ alertmanager_install_path }}"
+    - "{{ alertmanager_config_path }}"
+    - "{{ storage_path }}"
+  tags: ['alertmanager', 'alertmanager-install', 'service-update']
+
+- block:
+
+
+    - name: set internal variables for convenience, part 1
+      set_fact:
+        alertmanager_signature: "alertmanager-{{ alertmanager_version }}.{{ platform_suffix[ansible_userspace_bits] }}"
+      tags: ['alertmanager', 'alertmanager-install']
+
+    - name: set internal variables for convenience, part 2
+      set_fact:
+        alertmanager_untar_path: "{{ alertmanager_install_path }}"
+      tags: ['alertmanager', 'alertmanager-install']
+
+    - name: debug internal variables
+      debug: msg="{{ alertmanager_version }} {{ alertmanager_signature }}"
+      tags: ['alertmanager', 'alertmanager-install']
+
+    - name: set download url
+      set_fact:
+        alertmanager_tarball_url: "https://github.com/prometheus/alertmanager/releases/download/v{{ alertmanager_version }}/{{ alertmanager_signature }}.tar.gz"
+      tags: ['alertmanager', 'alertmanager-install']
+#      when: alertmanager_version is not defined
+
+    - name: download and uncompress alertmanager tarball
+      unarchive:
+        src: "{{ alertmanager_tarball_url }}"
+        dest: "{{ base_path }}"
+        copy: no
+        owner: "{{ prometheus_user }}"
+        group: "{{ prometheus_group }}"
+        mode: "go-w"
+      register: alertmanager_download_result
+      until: alertmanager_download_result.failed == false
+      retries: 5
+      delay: 10
+      tags: ['alertmanager', 'alertmanager-download', 'alertmanager-install']
+
+    - name: copy the built alertmanager to the install path
+      command: "mv {{ base_path }}/{{ alertmanager_signature }}/alertmanager {{ alertmanager_install_path }}"
+      tags: ['alertmanager', 'alertmanager-install']
+
+    - name: copy the built amtool to the install path
+      command: "mv {{ base_path }}/{{ alertmanager_signature }}/amtool {{ alertmanager_install_path }}"
+      tags: ['alertmanager', 'alertmanager-install']
+
+    - name: remove the built path
+      file:
+        path: "{{ base_path }}/{{ alertmanager_signature }}"
+        state: absent
+      tags: ['alertmanager', 'alertmanager-install']
+
+
+- name: copy service script to server
+  template: src="alertmanager.service.j2"  dest="/etc/systemd/system/alertmanager.service"  mode="a+x"
+  when: ansible_service_mgr == 'systemd'
+  notify:
+    - restart systemd alertmanager
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'service-update']
+
+- name: copy INIT script to server
+  template: src="alertmanager.sysvinit.{{ ansible_os_family|lower }}.sh.j2"  dest="/etc/init.d/alertmanager"  mode="a+x"
+  when: ansible_service_mgr != 'systemd'
+  notify:
+    - restart service alertmanager
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'service-update']
+
+#- name: set INIT status
+#  service: name=alertmanager enabled=yes
+#  when: ansible_service_mgr != 'systemd'
+#  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update']
+
+- name: install alertmanager config file from templates, if any
+  template:
+    src: "alertmanager.yml.j2"
+    dest: "{{ alertmanager_install_path }}/alertmanager.yml.new"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: 0664
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'conf-update']
+
+- name: check config file
+  command: "{{ alertmanager_install_path }}/amtool check-config {{ alertmanager_install_path }}/alertmanager.yml.new"
+  register: am_conf_check
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'conf-update']
+
+#- name: params check for debug
+#  debug: msg="{{ item }}"
+#  with_items:
+#    - "{{ web_external_url }}"
+#    - "{{ web_route_prefix }}"
+#    - "{{ cluster_advertise_address }}"
+#    - "{{ cluster_peer }}"
+#  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update']
+
+- name: install alertmanager config file after check
+  template:
+    src: "alertmanager.yml.j2"
+    dest: "{{ alertmanager_install_path }}/alertmanager.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: 0664
+#  notify:
+#    - reload alertmanager
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'conf-update']
+
+- name: ensure alertmanager reloaded
+  service: name=alertmanager state=reloaded
+  when: ansible_service_mgr != 'systemd'
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'conf-update']
+
+- name: ensure alertmanager reloaded
+  systemd:
+    name: alertmanager
+    state: reloaded
+    daemon_reload: True
+  when: ansible_service_mgr == 'systemd'
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'conf-update']
+
+#- meta: flush_handlers
+#  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update']
+
+#- name: ensure alertmanager service is enabled and started
+#  service:
+#    name: alertmanager
+#    state: started
+#    enabled: yes
+#  when: ansible_service_mgr == 'systemd'
+#  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update']
+
+- name: firewall configure
+  template:
+    src: firewall_setting.sh.j2
+    dest: ~/firewall_setting.sh
+    mode: "a+x"
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'firewall-update']
+
+- name: firewall configure
+  command: "cd ~ && bash firewall_setting.sh"
+  tags: ['alertmanager', 'alertmanager-service', 'alertmanager-conf-update', 'firewall-update']

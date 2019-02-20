@@ -1,0 +1,31 @@
+groups:
+- name: 监控系统状态
+  rules:
+  - alert: 监控系统服务状态异常通知
+    expr: avg_over_time(up{job=~"^influxdb|grafana|alertmanager|push_gateway|snmp_exporter|prometheus|blackbox_exporter$"}[1m]) == 0
+    for: 1m
+    labels:
+      severity: INFO
+      at_mobiles: 18792648142
+      is_at_all: false
+    annotations:
+      summary: "prometheus采集{{ $labels.job }} job异常(实例:{{ $labels.instance }})"
+#      description: "Prometheus server实例{{ $labels.instance_ip }} 上的job {{ $labels.job }} 状态异常，链接：{{ $labels.instance }}，请及时确认！"
+  - alert: 监控系统服务状态异常警告
+    expr: avg_over_time(up{job=~"^influxdb|grafana|alertmanager|push_gateway|snmp_exporter|prometheus|blackbox_exporter$"}[1m]) == 0
+    for: 10m
+    labels:
+      severity: WARNING
+      at_mobiles: 18792648142
+      is_at_all: false
+    annotations:
+      summary: "prometheus采集{{ $labels.job }} job异常(实例:{{ $labels.instance }})"
+  - alert: 监控系统服务状态异常紧急
+    expr: avg_over_time(up{job=~"^influxdb|grafana|alertmanager|push_gateway|snmp_exporter|prometheus|blackbox_exporter$"}[1m]) == 0
+    for: 20m
+    labels:
+      severity: CRITICAL
+      at_mobiles: 18792648142
+      is_at_all: false
+    annotations:
+      summary: "prometheus采集{{ $labels.job }} job异常(实例:{{ $labels.instance }})"

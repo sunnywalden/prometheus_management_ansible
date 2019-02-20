@@ -1,0 +1,31 @@
+---
+# file: handlers/main.yml
+#
+
+- name: start systemd dingtalk
+  systemd:
+    name: dingtalk
+    state: started
+    daemon_reload: True
+    enabled: yes
+
+- name: stop systemd dingtalk
+  systemd:
+    name: dingtalk
+    state: stopped
+    daemon_reload: True
+
+- name: restart systemd dingtalk
+  systemd:
+    name: dingtalk
+    state: restarted
+    daemon_reload: True
+
+- name: start service dingtalk
+  service: name=dingtalk state=started enabled=yes
+
+- name: stop service dingtalk
+  service: name=dingtalk state=stopped
+
+- name: restart service dingtalk
+  service: name=dingtalk state=restarted
