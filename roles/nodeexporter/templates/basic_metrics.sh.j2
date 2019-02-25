@@ -11,15 +11,6 @@ if [ $vw_check -ne 1 ];then
   rpm -i ${WK_DIR}/virt-what-1.11-2.el5.x86_64.rpm
 fi
 
-# node_region
-#    10.1.0.0 idc-shanghai
-#    10.3.101.0 idc-shenzhen
-#    10.3.102.0 idc-shenzhen
-#    10.3.103.0 idc-shenzhen
-#    10.3.104.0 idc-shenzhen
-#    10.3.105.0 idc-shenzhen
-#    10.3.106.0 idc-shenzhen
-#    10.3.107.0 idc-shenzhen
 
 current_hostname=`hostname`
 
@@ -35,72 +26,14 @@ grep -q "$filename" /var/spool/cron/root
 tmp_file=${0%.*}.prom.$$
 
 function ip_addr(){
-  python -c "import socket;print([(s.connect(('223.5.5.5', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1])"
+  python -c "import socket;print([(s.connect(('192.168.1.10', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1])"
 }
 
 current_ip=`ip_addr`
 
-function get_vpc_region(){
-  echo `curl -sSL http://100.100.100.200/latest/meta-data/region-id`
-}
 
 function get_classic_region(){
   echo "cn-hangzhou"
-}
-
-
-function get_idc_region(){
-  ipaddr=$(ip_addr)
-  ip_seg_1=${ipaddr%%.*}
-  _ip_seg=${ipaddr#*.}
-  ip_seg_2=${_ip_seg%%.*}
-
-  _ip_seg=${_ip_seg#*.}
-  ip_seg_3=${_ip_seg%%.*}
-
-  case $ip_seg_2 in
-    1)
-      echo "idc-shanghai"
-      ;;
-    2)
-      echo "hq-shanghai"
-      ;;
-    3)
-      if [[ "$ip_seg_3" -ge 101 && "$ip_seg_3" -le 107 ]];then
-        echo "idc-shenzhen"
-      else
-        echo "hq-shenzhen"
-      fi
-      ;;
-    4)
-      echo "wuhan"
-      ;;
-    5)
-      echo "beijing"
-      ;;
-    6)
-      echo "meizhou"
-      ;;
-    10)
-      echo "chengdu"
-      ;;
-    9)
-      echo "zhangjiang"
-      ;;
-    8)
-      echo "zhangjiang"
-      ;;
-
-    *)
-      echo "unknown"
-      ;;
-  esac
-}
-
-function get_region(){
-
-...
-
 }
 
 function get_os_info(){
@@ -153,7 +86,6 @@ function get_vendor_info(){
   echo "node_vendor{vendor=\"$vendor\", model=\"$model\"} 1"
 }
 
-current_region=`get_region $current_ip`
 virtual_type=`virt-what`
 if [ -z "$virtual_type" ];then
   virtual_type="bare_metal"
@@ -177,8 +109,6 @@ $(get_device_ip)
 # HELP node_ip ipaddress of current node
 node_ip{ipaddress="$current_ip"} 1
 
-# HELP node_region 区域
-node_region{region="$current_region"} 1
 
 # HELP node_virtual_type 虚拟化类型
 node_virtual_type{type="$virtual_type"} 1
