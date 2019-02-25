@@ -99,12 +99,7 @@ function get_idc_region(){
 
 function get_region(){
 
-  http_code=$(curl --max-time 2 -i -sLS http://100.100.100.200/latest|head -1|awk '{print $2}')
-  if [ "$http_code" == "200" ];then    # VPC 网络
-    echo $(get_vpc_region)
-  else
-    echo $(get_idc_region $current_ip)
-  fi
+...
 
 }
 
