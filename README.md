@@ -93,7 +93,7 @@ prometheus_group: "prometheus"
 
 #域名配置
 prometheus_site_proto: 'https'
-prometheus_site: 'prom.ctcfin.com'
+prometheus_site: 'prom.demo.com'
 prometheus_prefix: 'prome'
 alertmanager_prefix: 'am'
 dingtalk_prefix: "webhook"
